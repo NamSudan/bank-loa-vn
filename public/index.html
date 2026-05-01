@@ -627,9 +627,59 @@ function processMessage(text) {
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── SPEAK ──
+// ── SPEAK — Google Translate TTS (giọng Việt tự nhiên, miễn phí) ──
+let currentAudio = null;
+
 function speak(text) {
-  if(!window.speechSynthesis) return;
+  if(currentAudio) { currentAudio.pause(); currentAudio = null; }
+
+  // Chia nhỏ text nếu dài hơn 200 ký tự (giới hạn Google TTS)
+  const chunks = splitText(text, 180);
+  playChunks(chunks, 0);
+}
+
+function splitText(text, maxLen) {
+  const chunks = [];
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  let current = '';
+  for(const s of sentences) {
+    if((current + s).length > maxLen) {
+      if(current) chunks.push(current.trim());
+      current = s;
+    } else {
+      current += (current ? ' ' : '') + s;
+    }
+  }
+  if(current) chunks.push(current.trim());
+  return chunks.length ? chunks : [text.slice(0, maxLen)];
+}
+
+function playChunks(chunks, idx) {
+  if(idx >= chunks.length) { setSpeaking(false); return; }
+  const chunk = chunks[idx];
+  const vol = parseFloat(document.getElementById('vol').value);
+
+  // Dùng Google Translate TTS API (miễn phí, không cần key)
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=vi&client=tw-ob`;
+
+  const audio = new Audio(url);
+  currentAudio = audio;
+  audio.volume = vol;
+  audio.playbackRate = rate;
+
+  if(idx === 0) setSpeaking(true);
+
+  audio.onended = () => playChunks(chunks, idx + 1);
+  audio.onerror = () => {
+    // Fallback về Web Speech API nếu Google TTS bị chặn
+    console.warn('Google TTS blocked, fallback to Web Speech');
+    speakFallback(chunks.join(' '));
+  };
+  audio.play().catch(() => speakFallback(chunks.join(' ')));
+}
+
+function speakFallback(text) {
+  if(!window.speechSynthesis) { setSpeaking(false); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang='vi-VN'; u.rate=rate;
