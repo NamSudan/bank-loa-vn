@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loa Ngân Hàng VN</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0a0a0a;
+  --paper: #f5f2eb;
+  --cream: #ede9df;
+  --rule: #d4cfc4;
+  --accent: #1a472a;
+  --accent2: #c8a96e;
+  --red: #c0392b;
+  --blue: #1a3a5c;
+  --muted: #8a8478;
+  --font: 'Epilogue', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Newspaper texture */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(200,169,110,.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(26,71,42,.06) 0%, transparent 50%);
+  pointer-events:none;
+}
+
+/* Grid lines */
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,.04) 39px, rgba(0,0,0,.04) 40px);
+  pointer-events:none;
+}
+
+.wrap { max-width:720px; margin:0 auto; padding:32px 20px; position:relative; z-index:1; }
+
+/* ── MASTHEAD ── */
+.masthead {
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 12px 0;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.masthead-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.masthead-name {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  flex: 1;
+  text-align: center;
+}
+
+.masthead-name span { color: var(--accent); }
+
+.status-tag {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+.status-tag.on { color: var(--accent); }
+.status-tag.off { color: var(--muted); }
+.status-tag.wait { color: var(--accent2); }
+.blink { width:6px; height:6px; border-radius:50%; background:currentColor; animation:bl 1.2s infinite; }
+@keyframes bl { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── MAIN SPEAKER ── */
+.speaker-block {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--cream);
+  padding: 28px 24px;
+  margin-bottom: 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all .4s;
+}
+
+.speaker-block.speaking {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,71,42,.08), inset 0 0 40px rgba(26,71,42,.04);
+}
+
+/* Oscilloscope waves */
+.osc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 64px;
+  margin-bottom: 16px;
+}
+
+.osc-bar {
+  width: 3px;
+  background: var(--rule);
+  border-radius: 1px;
+  height: 4px;
+  transition: background .3s;
+}
+
+.speaking .osc-bar {
+  background: var(--accent);
+  animation: osc-wave var(--d,.5s) ease-in-out infinite alternate;
+}
+
+@keyframes osc-wave { from{height:3px} to{height:var(--h,40px)} }
+
+.spk-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--muted);
+  transition: color .3s;
+}
+.speaking .spk-label { color: var(--accent); }
+
+/* Last announcement box */
+.announce-box {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  display: none;
+  text-align: left;
+}
+.announce-box.show { display: block; }
+.ann-bank {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 4px;
+}
+.ann-amount {
+  font-family: var(--mono);
+  font-size: 28px; font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.ann-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* ── CONFIG ── */
+.section {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--cream);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.sec-hdr {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rule);
+  background: rgba(0,0,0,.02);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.sec-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sec-body { padding: 16px; }
+
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted);
+  display: block; margin-bottom: 5px;
+}
+.field input {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 9px 12px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+
+.btn {
+  border: 1px solid var(--ink);
+  padding: 9px 18px;
+  border-radius: 2px;
+  font-family: var(--font);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-solid { background: var(--ink); color: var(--paper); }
+.btn-solid:hover { background: var(--accent); border-color: var(--accent); }
+.btn-ghost { background: transparent; color: var(--ink); }
+.btn-ghost:hover { background: var(--ink); color: var(--paper); }
+.btn-stop { border-color: var(--red); color: var(--red); background: transparent; }
+.btn-stop:hover { background: var(--red); color: white; }
+
+/* ── CONTROLS ── */
+.controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.ctrl { border: 1px solid var(--rule); border-radius: 4px; background: var(--cream); padding: 14px; }
+.ctrl-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+.trow { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.tname { font-size: 12px; font-weight: 500; }
+
+/* Toggle switch - newspaper style */
+.tgl { position:relative; width:36px; height:20px; }
+.tgl input { opacity:0; width:0; height:0; }
+.sl {
+  position:absolute; inset:0;
+  background: var(--paper); border: 1px solid var(--rule);
+  border-radius: 1px; cursor:pointer; transition:.2s;
+}
+.sl:before {
+  content:''; position:absolute;
+  width:12px; height:12px; left:3px; top:3px;
+  background: var(--muted); transition:.2s;
+}
+input:checked+.sl { background: var(--accent); border-color: var(--accent); }
+input:checked+.sl:before { transform:translateX(16px); background: white; }
+
+.vrow { display:flex; align-items:center; gap:8px; margin-top:8px; }
+.vrow span { font-size:11px; color:var(--muted); }
+input[type=range] { flex:1; -webkit-appearance:none; height:2px; background:var(--rule); outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:var(--ink); cursor:pointer; border-radius:0; }
+
+.spd-row { display:flex; gap:4px; margin-top:8px; }
+.spd {
+  flex:1; background:var(--paper); border:1px solid var(--rule);
+  color:var(--muted); padding:5px 0; border-radius:1px;
+  font-family:var(--font); font-size:9px; font-weight:700;
+  cursor:pointer; transition:all .15s; text-align:center;
+  letter-spacing:1px; text-transform:uppercase;
+}
+.spd.on { background:var(--ink); border-color:var(--ink); color:var(--paper); }
+
+/* ── BANK TAGS ── */
+.bank-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.bank-tag {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--muted);
+  background: var(--paper);
+  cursor: pointer;
+  transition: all .15s;
+}
+.bank-tag.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ── TRANSACTION LOG ── */
+.log-body { max-height: 300px; overflow-y: auto; }
+.log-body::-webkit-scrollbar { width: 3px; }
+.log-body::-webkit-scrollbar-thumb { background: var(--rule); }
+
+.log-empty { padding: 32px; text-align: center; color: var(--muted); font-size: 12px; font-style: italic; }
+
+.tx-item {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule);
+  animation: slideIn .25s ease;
+}
+.tx-item:last-child { border-bottom: none; }
+@keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+
+.tx-bank-icon {
+  width: 36px; height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  background: var(--paper);
+  color: var(--ink);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+.tx-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.tx-raw { font-size: 11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 380px; }
+.tx-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space:nowrap; }
+.tx-amt { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); text-align: right; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--ink); color: var(--paper);
+  padding: 10px 20px; border-radius: 2px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── TEST SMS ── */
+.test-sms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sms-sample {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+}
+.sms-sample:hover { border-color: var(--ink); }
+.ss-bank { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent2); margin-bottom: 3px; }
+.ss-text { font-size: 10px; color: var(--muted); font-family: var(--mono); line-height: 1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+@media(max-width:500px){
+  .controls-grid { grid-template-columns:1fr; }
+  .test-sms-grid { grid-template-columns:1fr; }
+  .masthead-name { font-size:24px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Masthead -->
+<div class="masthead">
+  <div class="masthead-title">Phiên bản 2.0</div>
+  <div class="masthead-name">🔊 <span>LOA</span> NGÂN HÀNG</div>
+  <div class="status-tag off" id="status-tag">
+    <div class="blink"></div>
+    <span id="status-txt">Offline</span>
+  </div>
+</div>
+
+<!-- Speaker -->
+<div class="speaker-block" id="spk-block">
+  <div class="osc" id="osc"></div>
+  <div class="spk-label" id="spk-label">Đang chờ giao dịch...</div>
+  <div class="announce-box" id="ann-box">
+    <div class="ann-bank" id="ann-bank"></div>
+    <div class="ann-amount" id="ann-amount"></div>
+    <div class="ann-text" id="ann-text"></div>
+  </div>
+</div>
+
+<!-- Config -->
+<div class="section">
+  <div class="sec-hdr">
+    <div class="sec-title">⚙️ Cấu hình kết nối</div>
+  </div>
+  <div class="sec-body">
+    <div class="field">
+      <label>Vercel Server URL</label>
+      <input id="vercel-url" placeholder="https://bank-loa.vercel.app">
+    </div>
+    <div class="field">
+      <label>Telegram Bot Token</label>
+      <input id="bot-token" placeholder="1234567890:AAFxxxxxxxxxx">
+    </div>
+    <div class="field">
+      <label>Chat ID</label>
+      <input id="chat-id" placeholder="123456789" style="max-width:200px;">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-solid" id="btn-start" onclick="start()">▶ Bắt đầu lắng nghe</button>
+      <button class="btn btn-stop" id="btn-stop" onclick="stop()" style="display:none;">⏹ Dừng</button>
+      <button class="btn btn-ghost" onclick="registerWebhook()">🔗 Đăng ký Webhook</button>
+      <button class="btn btn-ghost" onclick="testVoice()">🔊 Thử loa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls-grid">
+  <div class="ctrl">
+    <div class="ctrl-title">Tùy chỉnh âm thanh</div>
+    <div class="trow"><span class="tname">🔊 Bật loa</span><label class="tgl"><input type="checkbox" id="v-on" checked><span class="sl"></span></label></div>
+    <div class="trow"><span class="tname">🔔 Popup</span><label class="tgl"><input type="checkbox" id="n-on" checked><span class="sl"></span></label></div>
+    <div class="vrow"><span>Nhỏ</span><input type="range" id="vol" min="0" max="1" step=".1" value="1"><span>To</span></div>
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-title">Tốc độ đọc</div>
+    <div class="spd-row">
+      <button class="spd" onclick="setSpd(.8,this)">Chậm</button>
+      <button class="spd on" onclick="setSpd(1,this)">Vừa</button>
+      <button class="spd" onclick="setSpd(1.3,this)">Nhanh</button>
+    </div>
+    <div class="ctrl-title" style="margin-top:14px;">Thử SMS mẫu</div>
+    <button class="btn btn-ghost" style="width:100%;font-size:10px;" onclick="showTestPanel()">Mở panel thử nghiệm</button>
+  </div>
+</div>
+
+<!-- Ngân hàng filter -->
+<div class="section">
+  <div class="sec-hdr"><div class="sec-title">🏦 Ngân hàng được hỗ trợ</div></div>
+  <div class="bank-tags" id="bank-tags">
+    <div class="bank-tag active" data-bank="all" onclick="filterBank('all',this)">Tất cả</div>
+    <div class="bank-tag" data-bank="VCB" onclick="filterBank('VCB',this)">Vietcombank</div>
+    <div class="bank-tag" data-bank="AGRI" onclick="filterBank('AGRI',this)">Agribank</div>
+    <div class="bank-tag" data-bank="TCB" onclick="filterBank('TCB',this)">Techcombank</div>
+    <div class="bank-tag" data-bank="MB" onclick="filterBank('MB',this)">MB Bank</div>
+    <div class="bank-tag" data-bank="BIDV" onclick="filterBank('BIDV',this)">BIDV</div>
+    <div class="bank-tag" data-bank="VTB" onclick="filterBank('VTB',this)">Vietinbank</div>
+    <div class="bank-tag" data-bank="ACB" onclick="filterBank('ACB',this)">ACB</div>
+    <div class="bank-tag" data-bank="TPB" onclick="filterBank('TPB',this)">TPBank</div>
+    <div class="bank-tag" data-bank="VPB" onclick="filterBank('VPB',this)">VPBank</div>
+    <div class="bank-tag" data-bank="STB" onclick="filterBank('STB',this)">Sacombank</div>
+  </div>
+  <!-- Test panel -->
+  <div id="test-panel" style="display:none; padding:14px; border-top:1px solid var(--rule);">
+    <div class="sec-title" style="margin-bottom:10px;">Bấm để thử loa ngay</div>
+    <div class="test-sms-grid" id="test-grid"></div>
+  </div>
+</div>
+
+<!-- Transaction log -->
+<div class="section">
+  <div class="sec-hdr">
+    <div class="sec-title">📋 Lịch sử giao dịch</div>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="log-cnt">0 giao dịch</span>
+  </div>
+  <div class="log-body" id="log-body">
+    <div class="log-empty">Chưa có giao dịch nào — bấm "Bắt đầu lắng nghe" để bắt đầu</div>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── BANK PATTERNS ──
+const BANKS = {
+  VCB:  { name:'Vietcombank', short:'VCB', color:'#006D38',
+    patterns:[/VCB|VIETCOMBANK|vcb/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  AGRI: { name:'Agribank', short:'AGR', color:'#E31837',
+    patterns:[/AGRI|Agribank|agribank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  TCB:  { name:'Techcombank', short:'TCB', color:'#E61F2B',
+    patterns:[/TCB|TECHCOM|Techcombank/i],
+    amtPattern:/nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+  MB:   { name:'MB Bank', short:'MB', color:'#8B0000',
+    patterns:[/MB\s*BANK|MBBANK|MBBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  BIDV: { name:'BIDV', short:'BIDV', color:'#003087',
+    patterns:[/BIDV/i],
+    amtPattern:/So tien[:\s]+[+]?([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+  VTB:  { name:'Vietinbank', short:'VTB', color:'#003087',
+    patterns:[/VIETINBANK|Vietinbank|CTG/i],
+    amtPattern:/Nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+  ACB:  { name:'ACB', short:'ACB', color:'#0066B3',
+    patterns:[/\bACB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  TPB:  { name:'TPBank', short:'TPB', color:'#E4032E',
+    patterns:[/TPBANK|TPBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  VPB:  { name:'VPBank', short:'VPB', color:'#007A3D',
+    patterns:[/VPBANK|VPBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+  STB:  { name:'Sacombank', short:'STB', color:'#0066B2',
+    patterns:[/SACOMBANK|Sacombank|STB/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+};
+
+const GENERIC_AMT = /[+]?\s*([\d,\.]{3,})\s*(?:VND|vnd|vnđ|đ)/i;
+
+const SAMPLES = [
+  { bank:'VCB',  text:'VCB: So du TK 1234567890 +350,000 VND luc 09:12 28/04. TU NGUYEN VAN A. Ref 123456' },
+  { bank:'AGRI', text:'Agribank: TK 987654 +520,000 VND luc 14:30. Noi dung: DH002 TRAN THI B' },
+  { bank:'TCB',  text:'Techcombank: TK 456789 nhan 180,000 VND tu 0912345678. Noi dung: thanh toan' },
+  { bank:'MB',   text:'MB BANK: +750,000 VND tu 0923456789 luc 11:05. LE VAN C chuyen khoan' },
+  { bank:'BIDV', text:'BIDV: So tien: +290,000 VND. TK 112233. PHAM THI D. Ref 789012' },
+  { bank:'VTB',  text:'Vietinbank: Nhan 430,000 VND tu HOANG VAN E luc 16:20' },
+];
+
+// ── STATE ──
+let polling = null;
+let lastTime = Date.now() - 2000;
+let rate = 1;
+let logs = [];
+let filterBankKey = 'all';
+
+// ── INIT OSC ──
+const osc = document.getElementById('osc');
+[8,16,28,42,56,48,36,24,14,20,38,52,44,30,18,24,40,50,38,22].forEach((h,i)=>{
+  const b = document.createElement('div');
+  b.className = 'osc-bar';
+  b.style.cssText = `--h:${h}px;--d:${(.35+i*.04).toFixed(2)}s;animation-delay:${i*.025}s`;
+  osc.appendChild(b);
+});
+
+// ── INIT TEST GRID ──
+function initTestGrid() {
+  document.getElementById('test-grid').innerHTML = SAMPLES.map(s=>`
+    <div class="sms-sample" onclick="testSMS('${s.text.replace(/'/g,"\\'")}')">
+      <div class="ss-bank">${BANKS[s.bank]?.name||s.bank}</div>
+      <div class="ss-text">${s.text}</div>
+    </div>`).join('');
+}
+initTestGrid();
+
+// ── LOAD CONFIG ──
+window.onload = () => {
+  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+    const v = localStorage.getItem('bankloa_'+k);
+    if(v) document.getElementById(k).value = v;
+  });
+  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  if(window.speechSynthesis) speechSynthesis.getVoices();
+};
+
+function saveConfig() {
+  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+    const v = document.getElementById(k).value.trim();
+    if(v) localStorage.setItem('bankloa_'+k, v);
+  });
+}
+
+// ── DETECT BANK ──
+function detectBank(text) {
+  for(const [key, bank] of Object.entries(BANKS)) {
+    if(bank.patterns.some(p=>p.test(text))) return { key, ...bank };
+  }
+  return { key:'UNK', name:'Ngân hàng', short:'???', color:'#555' };
+}
+
+// ── EXTRACT AMOUNT ──
+function extractAmt(text, bank) {
+  const pattern = bank?.amtPattern || GENERIC_AMT;
+  const m = text.match(pattern);
+  if(m) {
+    const raw = (m[1]||m[2]||'').replace(/[,\.]/g,'');
+    const n = parseInt(raw);
+    return n > 999 ? n : 0;
+  }
+  const g = text.match(GENERIC_AMT);
+  return g ? parseInt(g[1].replace(/[,\.]/g,'')) : 0;
+}
+
+// ── BUILD SPEECH ──
+function buildSpeech(text, amt, bank) {
+  const fmt = n => {
+    if(n >= 1000000) return (n/1000000).toLocaleString('vi-VN', {maximumFractionDigits:1}) + ' triệu';
+    if(n >= 1000)    return (n/1000).toLocaleString('vi-VN', {maximumFractionDigits:0}) + ' nghìn';
+    return n.toLocaleString('vi-VN');
+  };
+  // Try extract sender name
+  const nameMatch = text.match(/(?:TU|tu|FROM)\s+([A-Z][A-Z\s]{2,20})(?:\s+(?:SO|TK|REF|LUC)|\.|$)/i);
+  const name = nameMatch ? nameMatch[1].trim() : null;
+  const bankName = bank.name;
+  if(name) return `${bankName}! ${name} vừa chuyển ${fmt(amt)} đồng. Xác nhận giao dịch thành công.`;
+  return `${bankName} thông báo! Tài khoản vừa nhận ${fmt(amt)} đồng.`;
+}
+
+// ── PROCESS MESSAGE ──
+function processMessage(text) {
+  const bank = detectBank(text);
+  const amt = extractAmt(text, bank);
+  if(!amt) return;
+
+  const speech = buildSpeech(text, amt, bank);
+  const fmt = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+
+  // Update speaker UI
+  document.getElementById('ann-bank').textContent = bank.name;
+  document.getElementById('ann-amount').textContent = '+' + fmt(amt);
+  document.getElementById('ann-amount').style.color = bank.color || 'var(--accent)';
+  document.getElementById('ann-text').textContent = speech;
+  document.getElementById('ann-box').classList.add('show');
+
+  // Add to log
+  addLog(amt, text, bank);
+
+  // Speak
+  if(document.getElementById('v-on').checked) speak(speech);
+
+  // Notification
+  if(document.getElementById('n-on').checked && Notification.permission==='granted')
+    new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
+}
+
+// ── SPEAK ──
+function speak(text) {
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang='vi-VN'; u.rate=rate;
+  u.volume=parseFloat(document.getElementById('vol').value);
+  const vi = speechSynthesis.getVoices().find(v=>v.lang.startsWith('vi'));
+  if(vi) u.voice=vi;
+  u.onstart=()=>setSpeaking(true);
+  u.onend=u.onerror=()=>setSpeaking(false);
+  speechSynthesis.speak(u);
+}
+
+function setSpeaking(on) {
+  document.getElementById('spk-block').classList.toggle('speaking', on);
+  document.getElementById('spk-label').textContent = on ? '🔊 Đang phát loa...' : 'Đang chờ giao dịch...';
+}
+
+// ── LOG ──
+function addLog(amt, raw, bank) {
+  const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
+  logs.unshift({ amt, raw, bank, t: new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+  renderLog();
+}
+
+function renderLog() {
+  const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
+  const filtered = filterBankKey === 'all' ? logs : logs.filter(l=>l.bank.key===filterBankKey);
+  const el = document.getElementById('log-body');
+  if(!filtered.length) { el.innerHTML='<div class="log-empty">Không có giao dịch nào</div>'; return; }
+  el.innerHTML = filtered.map(l=>`
+    <div class="tx-item">
+      <div class="tx-bank-icon" style="color:${l.bank.color||'var(--ink)'};border-color:${l.bank.color||'var(--rule)'}20;">${l.bank.short}</div>
+      <div>
+        <div class="tx-name">${l.bank.name}</div>
+        <div class="tx-raw">${l.raw}</div>
+      </div>
+      <div>
+        <div class="tx-amt">+${fmt(l.amt)}đ</div>
+        <div class="tx-time">${l.t}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('log-cnt').textContent = logs.length + ' giao dịch';
+}
+
+// ── START/STOP ──
+function start() {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  if(!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+  saveConfig();
+  lastTime = Date.now() - 3000;
+  setStatus('wait','Đang kết nối...');
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  pollServer();
+  polling = setInterval(pollServer, 1000);
+  toast('✓ Đang lắng nghe tất cả ngân hàng!');
+}
+
+function stop() {
+  clearInterval(polling); polling = null;
+  setStatus('off','Offline');
+  document.getElementById('btn-start').style.display = 'inline-flex';
+  document.getElementById('btn-stop').style.display = 'none';
+  setSpeaking(false);
+}
+
+async function pollServer() {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  try {
+    const res = await fetch(`${url}/api/webhook?since=${lastTime}`);
+    const data = await res.json();
+    setStatus('on','Đang lắng nghe');
+    if(data.messages && data.messages.length > 0) {
+      data.messages.forEach(m => {
+        lastTime = Math.max(lastTime, m.time);
+        processMessage(m.text);
+      });
+    }
+  } catch(e) { setStatus('off','Mất kết nối...'); }
+}
+
+async function registerWebhook() {
+  const token = document.getElementById('bot-token').value.trim();
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  if(!token||!url) { toast('⚠ Nhập Token và Vercel URL!'); return; }
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(url+'/api/webhook')}`);
+    const d = await r.json();
+    d.ok ? toast('✓ Webhook đã đăng ký thành công!') : toast('✗ Lỗi: ' + d.description);
+    if(d.ok) saveConfig();
+  } catch(e) { toast('✗ Không kết nối được!'); }
+}
+
+function testVoice() { speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.'); }
+
+function testSMS(text) { processMessage(text); }
+
+function showTestPanel() {
+  const p = document.getElementById('test-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function filterBank(key, el) {
+  filterBankKey = key;
+  document.querySelectorAll('.bank-tag').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderLog();
+}
+
+function setStatus(type, txt) {
+  document.getElementById('status-tag').className = 'status-tag ' + type;
+  document.getElementById('status-txt').textContent = txt;
+}
+
+function setSpd(s, el) {
+  rate = s;
+  document.querySelectorAll('.spd-row .spd').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
