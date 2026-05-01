@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loa Ngân Hàng VN</title>
+<script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -627,55 +628,21 @@ function processMessage(text) {
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── SPEAK — Google Translate TTS (giọng Việt tự nhiên, miễn phí) ──
-let currentAudio = null;
-
+// ── SPEAK — ResponsiveVoice giọng nữ tiếng Việt ──
 function speak(text) {
-  if(currentAudio) { currentAudio.pause(); currentAudio = null; }
-
-  // Chia nhỏ text nếu dài hơn 200 ký tự (giới hạn Google TTS)
-  const chunks = splitText(text, 180);
-  playChunks(chunks, 0);
-}
-
-function splitText(text, maxLen) {
-  const chunks = [];
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  let current = '';
-  for(const s of sentences) {
-    if((current + s).length > maxLen) {
-      if(current) chunks.push(current.trim());
-      current = s;
-    } else {
-      current += (current ? ' ' : '') + s;
-    }
-  }
-  if(current) chunks.push(current.trim());
-  return chunks.length ? chunks : [text.slice(0, maxLen)];
-}
-
-function playChunks(chunks, idx) {
-  if(idx >= chunks.length) { setSpeaking(false); return; }
-  const chunk = chunks[idx];
   const vol = parseFloat(document.getElementById('vol').value);
-
-  // Dùng Google Translate TTS API (miễn phí, không cần key)
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=vi&client=tw-ob`;
-
-  const audio = new Audio(url);
-  currentAudio = audio;
-  audio.volume = vol;
-  audio.playbackRate = rate;
-
-  if(idx === 0) setSpeaking(true);
-
-  audio.onended = () => playChunks(chunks, idx + 1);
-  audio.onerror = () => {
-    // Fallback về Web Speech API nếu Google TTS bị chặn
-    console.warn('Google TTS blocked, fallback to Web Speech');
-    speakFallback(chunks.join(' '));
-  };
-  audio.play().catch(() => speakFallback(chunks.join(' ')));
+  if(window.responsiveVoice && responsiveVoice.voiceSupport()) {
+    responsiveVoice.cancel();
+    responsiveVoice.speak(text, 'Vietnamese Female', {
+      rate: rate,
+      volume: vol,
+      onstart: () => setSpeaking(true),
+      onend:   () => setSpeaking(false),
+      onerror: () => { setSpeaking(false); speakFallback(text); }
+    });
+  } else {
+    speakFallback(text);
+  }
 }
 
 function speakFallback(text) {
@@ -684,8 +651,10 @@ function speakFallback(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang='vi-VN'; u.rate=rate;
   u.volume=parseFloat(document.getElementById('vol').value);
-  const vi = speechSynthesis.getVoices().find(v=>v.lang.startsWith('vi'));
-  if(vi) u.voice=vi;
+  const voices = speechSynthesis.getVoices();
+  const viFemale = voices.find(v=>v.lang.startsWith('vi') && /female|nu/i.test(v.name))
+                || voices.find(v=>v.lang.startsWith('vi'));
+  if(viFemale) u.voice=viFemale;
   u.onstart=()=>setSpeaking(true);
   u.onend=u.onerror=()=>setSpeaking(false);
   speechSynthesis.speak(u);
