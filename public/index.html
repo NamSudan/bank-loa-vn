@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loa Ngân Hàng VN</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔊</text></svg>">
 <script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -511,7 +512,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 // ── BANK PATTERNS ──
 const BANKS = {
   VCB:  { name:'Vietcombank', short:'VCB', color:'#006D38',
-    patterns:[/VCB|VIETCOMBANK|vcb/i],
+    patterns:[/VCB|VIETCOMBANK|Vietcombank|vcb/i],
     amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
   AGRI: { name:'Agribank', short:'AGR', color:'#E31837',
     patterns:[/AGRI|Agribank|agribank/i],
@@ -799,6 +800,9 @@ let allTransactions = [];
 
 function saveStat(amt, bank, raw) {
   const today = new Date().toDateString();
+  // Tránh trùng lặp giao dịch (cùng nội dung + cùng số tiền)
+  const exists = allTransactions.some(x => x.raw === raw && x.amt === amt);
+  if(exists) return;
   allTransactions.push({
     amt, bank: bank.key, bankName: bank.name,
     color: bank.color, raw,
@@ -813,16 +817,25 @@ function saveStat(amt, bank, raw) {
 async function loadTodayFromTelegram(token, chatId) {
   try {
     const today = new Date().toDateString();
-    // Lấy 100 tin gần nhất từ Telegram
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100&offset=-100`);
+    // QUAN TRỌNG: Không dùng offset=-100 (Telegram không hỗ trợ offset âm)
+    // Lấy toàn bộ tin chưa đọc (tối đa 100), sau đó cập nhật lastUpdateId
+    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`);
     const data = await res.json();
-    if(!data.ok) return;
+    if(!data.ok) {
+      toast('⚠ Token không hợp lệ hoặc lỗi kết nối!');
+      return;
+    }
     allTransactions = [];
     for(const update of data.result) {
       const msg = update.message?.text || update.channel_post?.text || '';
       const fromId = String(update.message?.chat?.id || update.channel_post?.chat?.id || '');
       const msgDate = update.message?.date || update.channel_post?.date || 0;
       const msgDay = new Date(msgDate * 1000).toDateString();
+
+      // Luôn cập nhật lastUpdateId TRƯỚC để pollTelegram chỉ lấy tin MỚI sau này
+      if(update.update_id > lastUpdateId) lastUpdateId = update.update_id;
+
+      // Chỉ hiển thị lịch sử: đúng chatId, hôm nay, và có số tiền hợp lệ
       if(msg && fromId === chatId && msgDay === today) {
         const bank = detectBank(msg);
         const amt = extractAmt(msg, bank);
@@ -834,16 +847,19 @@ async function loadTodayFromTelegram(token, chatId) {
             h: new Date(msgDate * 1000).getHours(),
             date: today
           });
-          // Thêm vào log UI (không phát loa)
           addLog(amt, msg, bank, false);
         }
       }
-      // Cập nhật lastUpdateId
-      if(update.update_id > lastUpdateId) lastUpdateId = update.update_id;
     }
     renderStats();
-    toast(`✓ Đã load ${allTransactions.length} giao dịch hôm nay!`);
-  } catch(e) {}
+    if(allTransactions.length > 0) {
+      toast(`✓ Đã load ${allTransactions.length} giao dịch hôm nay!`);
+    } else {
+      toast('✓ Kết nối thành công! Đang chờ giao dịch mới...');
+    }
+  } catch(e) {
+    toast('⚠ Lỗi kết nối Telegram!');
+  }
 }
 
 function renderStats() {
@@ -908,7 +924,7 @@ function renderStats() {
 
 // Xuất CSV
 function exportCSV() {
-  const stats = loadTodayStats();
+  const stats = allTransactions;
   if(!stats.length) { toast('⚠ Chưa có dữ liệu!'); return; }
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
   const rows = [
