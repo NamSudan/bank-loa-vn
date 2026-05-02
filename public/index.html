@@ -33,7 +33,6 @@ body {
   position: relative;
 }
 
-/* Newspaper texture */
 body::before {
   content:'';
   position:fixed; inset:0;
@@ -43,7 +42,6 @@ body::before {
   pointer-events:none;
 }
 
-/* Grid lines */
 body::after {
   content:'';
   position:fixed; inset:0;
@@ -53,7 +51,6 @@ body::after {
 
 .wrap { max-width:720px; margin:0 auto; padding:32px 20px; position:relative; z-index:1; }
 
-/* ── MASTHEAD ── */
 .masthead {
   border-top: 3px solid var(--ink);
   border-bottom: 1px solid var(--ink);
@@ -64,24 +61,16 @@ body::after {
   justify-content: space-between;
   gap: 16px;
 }
-
 .masthead-title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
   color: var(--muted);
 }
-
 .masthead-name {
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: -1.5px;
-  line-height: 1;
-  flex: 1;
-  text-align: center;
+  font-size: 32px; font-weight: 900;
+  letter-spacing: -1.5px; line-height: 1;
+  flex: 1; text-align: center;
 }
-
 .masthead-name span { color: var(--accent); }
 
 .status-tag {
@@ -92,13 +81,12 @@ body::after {
   border: 1px solid currentColor;
   border-radius: 2px;
 }
-.status-tag.on { color: var(--accent); }
+.status-tag.on  { color: var(--accent); }
 .status-tag.off { color: var(--muted); }
-.status-tag.wait { color: var(--accent2); }
+.status-tag.wait{ color: var(--accent2); }
 .blink { width:6px; height:6px; border-radius:50%; background:currentColor; animation:bl 1.2s infinite; }
 @keyframes bl { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-/* ── MAIN SPEAKER ── */
 .speaker-block {
   border: 1px solid var(--rule);
   border-radius: 4px;
@@ -110,92 +98,61 @@ body::after {
   overflow: hidden;
   transition: all .4s;
 }
-
 .speaker-block.speaking {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(26,71,42,.08), inset 0 0 40px rgba(26,71,42,.04);
 }
 
-/* Oscilloscope waves */
 .osc {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  height: 64px;
-  margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; height: 64px; margin-bottom: 16px;
 }
-
 .osc-bar {
-  width: 3px;
-  background: var(--rule);
-  border-radius: 1px;
-  height: 4px;
-  transition: background .3s;
+  width: 3px; background: var(--rule);
+  border-radius: 1px; height: 4px; transition: background .3s;
 }
-
 .speaking .osc-bar {
   background: var(--accent);
   animation: osc-wave var(--d,.5s) ease-in-out infinite alternate;
 }
-
 @keyframes osc-wave { from{height:3px} to{height:var(--h,40px)} }
 
 .spk-label {
   font-size: 10px; font-weight: 700;
   letter-spacing: 3px; text-transform: uppercase;
-  color: var(--muted);
-  transition: color .3s;
+  color: var(--muted); transition: color .3s;
 }
 .speaking .spk-label { color: var(--accent); }
 
-/* Last announcement box */
 .announce-box {
-  margin-top: 16px;
-  border-top: 1px solid var(--rule);
-  padding-top: 14px;
-  display: none;
-  text-align: left;
+  margin-top: 16px; border-top: 1px solid var(--rule);
+  padding-top: 14px; display: none; text-align: left;
 }
 .announce-box.show { display: block; }
 .ann-bank {
   font-size: 10px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase;
-  color: var(--accent2);
-  margin-bottom: 4px;
+  color: var(--accent2); margin-bottom: 4px;
 }
 .ann-amount {
-  font-family: var(--mono);
-  font-size: 28px; font-weight: 500;
-  color: var(--accent);
-  letter-spacing: -1px;
-  line-height: 1;
-  margin-bottom: 4px;
+  font-family: var(--mono); font-size: 28px; font-weight: 500;
+  color: var(--accent); letter-spacing: -1px; line-height: 1; margin-bottom: 4px;
 }
 .ann-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
 
-/* ── CONFIG ── */
 .section {
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--cream);
-  margin-bottom: 16px;
-  overflow: hidden;
+  border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--cream); margin-bottom: 16px; overflow: hidden;
 }
-
 .sec-hdr {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--rule);
+  padding: 10px 16px; border-bottom: 1px solid var(--rule);
   background: rgba(0,0,0,.02);
   display: flex; align-items: center; justify-content: space-between;
 }
-
 .sec-title {
   font-size: 10px; font-weight: 700;
-  letter-spacing: 2.5px; text-transform: uppercase;
-  color: var(--muted);
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
 }
-
 .sec-body { padding: 16px; }
 
 .field { margin-bottom: 12px; }
@@ -203,34 +160,23 @@ body::after {
 .field label {
   font-size: 10px; font-weight: 700;
   letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--muted);
-  display: block; margin-bottom: 5px;
+  color: var(--muted); display: block; margin-bottom: 5px;
 }
 .field input {
-  width: 100%;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  padding: 9px 12px;
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 12px;
-  outline: none;
-  transition: border-color .2s;
+  width: 100%; background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 3px;
+  padding: 9px 12px; color: var(--ink);
+  font-family: var(--mono); font-size: 12px;
+  outline: none; transition: border-color .2s;
 }
 .field input:focus { border-color: var(--accent); }
 
 .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
-
 .btn {
-  border: 1px solid var(--ink);
-  padding: 9px 18px;
-  border-radius: 2px;
-  font-family: var(--font);
-  font-size: 11px; font-weight: 700;
+  border: 1px solid var(--ink); padding: 9px 18px; border-radius: 2px;
+  font-family: var(--font); font-size: 11px; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
+  cursor: pointer; transition: all .15s;
 }
 .btn-solid { background: var(--ink); color: var(--paper); }
 .btn-solid:hover { background: var(--accent); border-color: var(--accent); }
@@ -239,15 +185,12 @@ body::after {
 .btn-stop { border-color: var(--red); color: var(--red); background: transparent; }
 .btn-stop:hover { background: var(--red); color: white; }
 
-/* ── CONTROLS ── */
 .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .ctrl { border: 1px solid var(--rule); border-radius: 4px; background: var(--cream); padding: 14px; }
 .ctrl-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-
 .trow { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .tname { font-size: 12px; font-weight: 500; }
 
-/* Toggle switch - newspaper style */
 .tgl { position:relative; width:36px; height:20px; }
 .tgl input { opacity:0; width:0; height:0; }
 .sl {
@@ -278,63 +221,44 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 }
 .spd.on { background:var(--ink); border-color:var(--ink); color:var(--paper); }
 
-/* ── BANK TAGS ── */
 .bank-tags {
   display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 14px;
-  border-bottom: 1px solid var(--rule);
+  padding: 14px; border-bottom: 1px solid var(--rule);
 }
 .bank-tag {
   font-size: 10px; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase;
-  padding: 4px 10px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  color: var(--muted);
-  background: var(--paper);
-  cursor: pointer;
-  transition: all .15s;
+  padding: 4px 10px; border: 1px solid var(--rule);
+  border-radius: 2px; color: var(--muted);
+  background: var(--paper); cursor: pointer; transition: all .15s;
 }
 .bank-tag.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
-/* ── TRANSACTION LOG ── */
 .log-body { max-height: 300px; overflow-y: auto; }
 .log-body::-webkit-scrollbar { width: 3px; }
 .log-body::-webkit-scrollbar-thumb { background: var(--rule); }
-
 .log-empty { padding: 32px; text-align: center; color: var(--muted); font-size: 12px; font-style: italic; }
 
 .tx-item {
-  display: grid;
-  grid-template-columns: 40px 1fr auto;
-  gap: 12px;
-  align-items: start;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: 40px 1fr auto;
+  gap: 12px; align-items: start;
+  padding: 12px 16px; border-bottom: 1px solid var(--rule);
   animation: slideIn .25s ease;
 }
 .tx-item:last-child { border-bottom: none; }
 @keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
 
 .tx-bank-icon {
-  width: 36px; height: 36px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
-  background: var(--paper);
-  color: var(--ink);
-  letter-spacing: 0;
-  text-transform: uppercase;
-  font-family: var(--mono);
+  width: 36px; height: 36px; border: 1px solid var(--rule);
+  border-radius: 2px; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; background: var(--paper);
+  color: var(--ink); letter-spacing: 0; text-transform: uppercase; font-family: var(--mono);
 }
-
 .tx-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
 .tx-raw { font-size: 11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 380px; }
 .tx-time { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space:nowrap; }
 .tx-amt { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); text-align: right; }
 
-/* ── TOAST ── */
 .toast {
   position: fixed; bottom: 20px; left: 50%;
   transform: translateX(-50%) translateY(60px);
@@ -347,20 +271,22 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
-/* ── TEST SMS ── */
 .test-sms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .sms-sample {
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all .15s;
-  text-align: left;
+  background: var(--paper); border: 1px solid var(--rule);
+  border-radius: 2px; padding: 10px 12px;
+  cursor: pointer; transition: all .15s; text-align: left;
 }
 .sms-sample:hover { border-color: var(--ink); }
 .ss-bank { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent2); margin-bottom: 3px; }
 .ss-text { font-size: 10px; color: var(--muted); font-family: var(--mono); line-height: 1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Loading overlay */
+.loading-bar {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: var(--accent2); width: 0%;
+  transition: width .3s ease; z-index: 9999;
+}
 
 @media(max-width:500px){
   .controls-grid { grid-template-columns:1fr; }
@@ -370,11 +296,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 </style>
 </head>
 <body>
+<div class="loading-bar" id="loading-bar"></div>
 <div class="wrap">
 
 <!-- Masthead -->
 <div class="masthead">
-  <div class="masthead-title">Phiên bản 2.0</div>
+  <div class="masthead-title">Phiên bản 2.1</div>
   <div class="masthead-name">🔊 <span>LOA</span> NGÂN HÀNG</div>
   <div class="status-tag off" id="status-tag">
     <div class="blink"></div>
@@ -404,8 +331,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
       <input id="bot-token" placeholder="1234567890:AAFxxxxxxxxxx">
     </div>
     <div class="field">
-      <label>Chat ID</label>
-      <input id="chat-id" placeholder="123456789" style="max-width:200px;">
+      <label>Channel / Chat ID</label>
+      <input id="chat-id" placeholder="-1001234567890" style="max-width:240px;">
     </div>
     <div class="btn-row">
       <button class="btn btn-solid" id="btn-start" onclick="start()">▶ Bắt đầu lắng nghe</button>
@@ -440,18 +367,17 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
   <div class="sec-hdr"><div class="sec-title">🏦 Ngân hàng được hỗ trợ</div></div>
   <div class="bank-tags" id="bank-tags">
     <div class="bank-tag active" data-bank="all" onclick="filterBank('all',this)">Tất cả</div>
-    <div class="bank-tag" data-bank="VCB" onclick="filterBank('VCB',this)">Vietcombank</div>
+    <div class="bank-tag" data-bank="VCB"  onclick="filterBank('VCB',this)">Vietcombank</div>
     <div class="bank-tag" data-bank="AGRI" onclick="filterBank('AGRI',this)">Agribank</div>
-    <div class="bank-tag" data-bank="TCB" onclick="filterBank('TCB',this)">Techcombank</div>
-    <div class="bank-tag" data-bank="MB" onclick="filterBank('MB',this)">MB Bank</div>
+    <div class="bank-tag" data-bank="TCB"  onclick="filterBank('TCB',this)">Techcombank</div>
+    <div class="bank-tag" data-bank="MB"   onclick="filterBank('MB',this)">MB Bank</div>
     <div class="bank-tag" data-bank="BIDV" onclick="filterBank('BIDV',this)">BIDV</div>
-    <div class="bank-tag" data-bank="VTB" onclick="filterBank('VTB',this)">Vietinbank</div>
-    <div class="bank-tag" data-bank="ACB" onclick="filterBank('ACB',this)">ACB</div>
-    <div class="bank-tag" data-bank="TPB" onclick="filterBank('TPB',this)">TPBank</div>
-    <div class="bank-tag" data-bank="VPB" onclick="filterBank('VPB',this)">VPBank</div>
-    <div class="bank-tag" data-bank="STB" onclick="filterBank('STB',this)">Sacombank</div>
+    <div class="bank-tag" data-bank="VTB"  onclick="filterBank('VTB',this)">Vietinbank</div>
+    <div class="bank-tag" data-bank="ACB"  onclick="filterBank('ACB',this)">ACB</div>
+    <div class="bank-tag" data-bank="TPB"  onclick="filterBank('TPB',this)">TPBank</div>
+    <div class="bank-tag" data-bank="VPB"  onclick="filterBank('VPB',this)">VPBank</div>
+    <div class="bank-tag" data-bank="STB"  onclick="filterBank('STB',this)">Sacombank</div>
   </div>
-  <!-- Test panel -->
   <div id="test-panel" style="display:none; padding:14px; border-top:1px solid var(--rule);">
     <div class="sec-title" style="margin-bottom:10px;">Bấm để thử loa ngay</div>
     <div class="test-sms-grid" id="test-grid"></div>
@@ -465,7 +391,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
     <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="stats-date"></span>
   </div>
   <div style="padding:16px;">
-    <!-- Tổng quan -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
       <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
         <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Tổng tiền</div>
@@ -480,16 +405,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
         <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue);" id="stats-avg">0đ</div>
       </div>
     </div>
-    <!-- Theo ngân hàng -->
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Theo ngân hàng</div>
     <div id="stats-banks"></div>
-    <!-- Biểu đồ theo giờ -->
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 8px;">Biểu đồ theo giờ</div>
     <div id="stats-chart" style="display:flex;align-items:flex-end;gap:3px;height:60px;"></div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--muted);">
       <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
     </div>
-    <!-- Nút xuất -->
     <button class="btn btn-ghost" style="width:100%;margin-top:14px;font-size:11px;" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
   </div>
 </div>
@@ -510,11 +432,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 
 <script>
 // ── BANK PATTERNS ──
-// Quy luật chung của SMS ngân hàng VN:
-// - Số tiền: +X,XXX VND hoặc +X.XXXvnd (luôn có dấu +)
-// - Tên ngân hàng: xuất hiện ở đầu tin HOẶC trong "Ref TênNH:"
-// - Số dư: "SD X,XXXvnd" hoặc "So du: X,XXX"
-// detectBank() ưu tiên tìm "Ref TênNH:" trước để chính xác hơn
 const BANKS = {
   VCB:  { name:'Vietcombank', short:'VCB', color:'#006D38',
     patterns:[/Ref\s*Vietcombank|\bVCB\b|VIETCOMBANK|Vietcombank/i],
@@ -560,8 +477,6 @@ const BANKS = {
     amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
 };
 
-// Fallback: bắt số tiền dương bất kỳ nếu không match pattern riêng
-// Ưu tiên số sau dấu + và trước VND/vnd/đ
 const GENERIC_AMT = /[+]\s*([\d,\.]{3,})\s*(?:VND|vnd|vnđ|đ)/i;
 
 const SAMPLES = [
@@ -575,10 +490,58 @@ const SAMPLES = [
 
 // ── STATE ──
 let polling = null;
-let lastTime = Date.now() - 2000;
 let rate = 1;
 let logs = [];
 let filterBankKey = 'all';
+let allTransactions = [];
+let lastUpdateId = 0;
+
+// ── STORAGE KEY (dùng chung cho mọi thiết bị cùng chatId) ──
+function storageKey() {
+  const chatId = document.getElementById('chat-id').value.trim() || 'default';
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return `bankloa_txns_${chatId}_${today}`;
+}
+
+// ── LƯU VÀO localStorage ──
+function persistTransactions() {
+  try {
+    const key = storageKey();
+    // Chỉ lưu tối đa 500 giao dịch mỗi ngày tránh tràn bộ nhớ
+    const toSave = allTransactions.slice(-500);
+    localStorage.setItem(key, JSON.stringify(toSave));
+    // Dọn dữ liệu cũ hơn 7 ngày
+    cleanOldStorage();
+  } catch(e) {}
+}
+
+// ── ĐỌC TỪ localStorage ──
+function loadFromStorage() {
+  try {
+    const key = storageKey();
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    return JSON.parse(raw) || [];
+  } catch(e) { return []; }
+}
+
+// ── DỌN DỮ LIỆU CŨ (>7 ngày) ──
+function cleanOldStorage() {
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const keysToDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('bankloa_txns_')) continue;
+      // Key format: bankloa_txns_<chatId>_YYYY-MM-DD
+      const datePart = k.split('_').pop();
+      if (datePart && new Date(datePart).getTime() < cutoff) {
+        keysToDelete.push(k);
+      }
+    }
+    keysToDelete.forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+}
 
 // ── INIT OSC ──
 const osc = document.getElementById('osc');
@@ -600,7 +563,6 @@ function initTestGrid() {
 initTestGrid();
 
 // ── LOAD CONFIG ──
-let lastUpdateId = 0;
 window.onload = () => {
   ['bot-token','chat-id'].forEach(k=>{
     const v = localStorage.getItem('bankloa_'+k);
@@ -627,23 +589,14 @@ function detectBank(text) {
 }
 
 // ── EXTRACT AMOUNT ──
-// Xử lý cả 2 format: 53,000 (dấu phẩy = phân cách nghìn) và 1.500.000 (dấu chấm = phân cách nghìn)
 function parseVNAmount(raw) {
   if(!raw) return 0;
-  // Xóa khoảng trắng
   raw = raw.trim();
-  // Format VN: 1.500.000 hoặc 1,500,000 hoặc 53,000 hoặc 1500000
-  // Nếu có nhiều dấu phẩy/chấm → tất cả là phân cách nghìn → xóa hết
   const commas = (raw.match(/,/g)||[]).length;
   const dots   = (raw.match(/\./g)||[]).length;
-  if(commas > 1 || dots > 1) {
-    // Nhiều dấu → đều là phân cách nghìn
-    return parseInt(raw.replace(/[,\.]/g,''));
-  }
-  // 1 dấu phẩy: 53,000 → phân cách nghìn (VN không dùng phẩy thập phân cho tiền)
+  if(commas > 1 || dots > 1) return parseInt(raw.replace(/[,\.]/g,''));
   if(commas === 1) return parseInt(raw.replace(/,/g,''));
-  // 1 dấu chấm: 53.000 → phân cách nghìn
-  if(dots === 1) return parseInt(raw.replace(/\./g,''));
+  if(dots === 1)   return parseInt(raw.replace(/\./g,''));
   return parseInt(raw);
 }
 
@@ -670,15 +623,13 @@ function buildSpeech(text, amt, bank) {
     if(n >= 1000)    return (n/1000).toLocaleString('vi-VN', {maximumFractionDigits:0}) + ' nghìn';
     return n.toLocaleString('vi-VN');
   };
-  // Try extract sender name
   const nameMatch = text.match(/(?:TU|tu|FROM)\s+([A-Z][A-Z\s]{2,20})(?:\s+(?:SO|TK|REF|LUC)|\.|$)/i);
   const name = nameMatch ? nameMatch[1].trim() : null;
-  const bankName = bank.name;
-  if(name) return `${bankName}! ${name} vừa chuyển ${fmt(amt)} đồng. Xác nhận giao dịch thành công.`;
-  return `${bankName} thông báo! Tài khoản vừa nhận ${fmt(amt)} đồng.`;
+  if(name) return `${bank.name}! ${name} vừa chuyển ${fmt(amt)} đồng. Xác nhận giao dịch thành công.`;
+  return `${bank.name} thông báo! Tài khoản vừa nhận ${fmt(amt)} đồng.`;
 }
 
-// ── PROCESS MESSAGE ──
+// ── PROCESS MESSAGE (realtime - có phát loa) ──
 function processMessage(text) {
   const bank = detectBank(text);
   const amt = extractAmt(text, bank);
@@ -687,35 +638,55 @@ function processMessage(text) {
   const speech = buildSpeech(text, amt, bank);
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
 
-  // Update speaker UI
   document.getElementById('ann-bank').textContent = bank.name;
   document.getElementById('ann-amount').textContent = '+' + fmt(amt);
   document.getElementById('ann-amount').style.color = bank.color || 'var(--accent)';
   document.getElementById('ann-text').textContent = speech;
   document.getElementById('ann-box').classList.add('show');
 
-  // Add to log
-  addLog(amt, text, bank);
+  addTransaction(amt, text, bank, Date.now(), true);
 
-  // Lưu thống kê
-  saveStat(amt, bank, text);
-
-  // Speak
   if(document.getElementById('v-on').checked) speak(speech);
-
-  // Notification
   if(document.getElementById('n-on').checked && Notification.permission==='granted')
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── SPEAK — ResponsiveVoice giọng nữ tiếng Việt ──
+// ── THÊM GIAO DỊCH (dùng chung cho cả load lịch sử & realtime) ──
+function addTransaction(amt, raw, bank, timestamp, shouldLog=true) {
+  // Tránh trùng: cùng raw text + cùng số tiền
+  const exists = allTransactions.some(x => x.raw === raw && x.amt === amt);
+  if(exists) return false;
+
+  const txn = {
+    amt,
+    bank: bank.key, bankName: bank.name, color: bank.color,
+    raw,
+    t: timestamp,
+    h: new Date(timestamp).getHours(),
+    date: new Date().toDateString()
+  };
+
+  allTransactions.push(txn);
+
+  if(shouldLog) {
+    const timeStr = new Date(timestamp).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+    logs.unshift({ amt, raw, bank, t: timeStr });
+    renderLog();
+    renderStats();
+  }
+
+  // Lưu vào localStorage ngay lập tức
+  persistTransactions();
+  return true;
+}
+
+// ── SPEAK ──
 function speak(text) {
   const vol = parseFloat(document.getElementById('vol').value);
   if(window.responsiveVoice && responsiveVoice.voiceSupport()) {
     responsiveVoice.cancel();
     responsiveVoice.speak(text, 'Vietnamese Female', {
-      rate: rate,
-      volume: vol,
+      rate: rate, volume: vol,
       onstart: () => setSpeaking(true),
       onend:   () => setSpeaking(false),
       onerror: () => { setSpeaking(false); speakFallback(text); }
@@ -745,16 +716,7 @@ function setSpeaking(on) {
   document.getElementById('spk-label').textContent = on ? '🔊 Đang phát loa...' : 'Đang chờ giao dịch...';
 }
 
-// ── LOG ──
-function addLog(amt, raw, bank, shouldSpeak=true) {
-  const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
-  // Tránh thêm trùng
-  const exists = logs.some(l=>l.raw===raw && l.amt===amt);
-  if(exists) return;
-  logs.unshift({ amt, raw, bank, t: new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
-  renderLog();
-}
-
+// ── RENDER LOG ──
 function renderLog() {
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
   const filtered = filterBankKey === 'all' ? logs : logs.filter(l=>l.bank.key===filterBankKey);
@@ -775,7 +737,7 @@ function renderLog() {
   document.getElementById('log-cnt').textContent = logs.length + ' giao dịch';
 }
 
-// ── START/STOP ──
+// ── START / STOP ──
 function start() {
   const token = document.getElementById('bot-token').value.trim();
   const chatId = document.getElementById('chat-id').value.trim();
@@ -784,10 +746,15 @@ function start() {
   setStatus('wait','Đang kết nối...');
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-stop').style.display = 'inline-flex';
+
   removeWebhook(token).then(async () => {
-    // Load lịch sử hôm nay từ Telegram trước
-    await loadTodayFromTelegram(token, chatId);
-    // Sau đó bắt đầu poll tin mới
+    // Bước 1: Load từ localStorage trước (instant, không cần mạng)
+    loadFromStorageIntoApp();
+
+    // Bước 2: Đồng bộ thêm từ Telegram (bổ sung tin còn trong queue)
+    await syncFromTelegram(token, chatId);
+
+    // Bước 3: Bắt đầu poll realtime
     polling = setInterval(() => pollTelegram(token, chatId), 2000);
     setStatus('on','Đang lắng nghe');
   });
@@ -801,27 +768,162 @@ function stop() {
   setSpeaking(false);
 }
 
-// Xóa webhook cũ để Telegram cho phép dùng getUpdates
 async function removeWebhook(token) {
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
-  } catch(e) {}
+  try { await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`); } catch(e) {}
 }
 
-// Poll thẳng Telegram getUpdates — không cần server
+// ── BƯỚC 1: LOAD TỪ localStorage (tức thì) ──
+function loadFromStorageIntoApp() {
+  const saved = loadFromStorage();
+  if(!saved.length) return;
+
+  let added = 0;
+  // Sắp xếp theo thời gian tăng dần
+  saved.sort((a, b) => a.t - b.t);
+
+  for (const txn of saved) {
+    const bank = { key: txn.bank, name: txn.bankName, color: txn.color, short: BANKS[txn.bank]?.short || '???' };
+    const exists = allTransactions.some(x => x.raw === txn.raw && x.amt === txn.amt);
+    if (!exists) {
+      allTransactions.push(txn);
+      const timeStr = new Date(txn.t).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+      logs.unshift({ amt: txn.amt, raw: txn.raw, bank, t: timeStr });
+      added++;
+    }
+  }
+
+  if(added > 0) {
+    renderLog();
+    renderStats();
+    toast(`📂 Đã khôi phục ${added} giao dịch từ bộ nhớ`);
+  }
+}
+
+// ── BƯỚC 2: ĐỒNG BỘ TỪ TELEGRAM (bổ sung tin mới chưa có trong localStorage) ──
+async function syncFromTelegram(token, chatId) {
+  setLoadingBar(20);
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTs = Math.floor(today.getTime() / 1000);
+
+    // Lấy tất cả updates còn trong queue Telegram (không confirm = không xóa khỏi queue)
+    // Dùng offset=0 (hoặc không truyền offset) để lấy từ đầu
+    let allUpdates = [];
+    let fetchOffset = 0;
+    let page = 0;
+
+    setLoadingBar(40);
+
+    while(true) {
+      const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${fetchOffset}&limit=100&allowed_updates=["channel_post","message"]`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if(!data.ok) {
+        toast('⚠ Token không hợp lệ!');
+        setLoadingBar(0);
+        return;
+      }
+
+      if(!data.result || data.result.length === 0) break;
+
+      allUpdates = allUpdates.concat(data.result);
+      const lastId = data.result[data.result.length - 1].update_id;
+      fetchOffset = lastId + 1;
+
+      // Nếu tin cuối cùng cũ hơn hôm nay → dừng, không cần lấy thêm
+      const lastDate = data.result[data.result.length - 1].channel_post?.date
+                    || data.result[data.result.length - 1].message?.date || 0;
+      if(lastDate > 0 && lastDate < todayTs) break;
+
+      // Nếu ít hơn 100 → không còn nữa
+      if(data.result.length < 100) break;
+
+      page++;
+      if(page > 20) break; // giới hạn 2000 tin tối đa
+    }
+
+    setLoadingBar(70);
+
+    // Cập nhật lastUpdateId để poll chỉ lấy tin MỚI
+    if(allUpdates.length > 0) {
+      lastUpdateId = allUpdates[allUpdates.length - 1].update_id;
+    }
+
+    // Lọc và thêm vào app
+    let newCount = 0;
+    const todayStr = new Date().toDateString();
+
+    // Sắp xếp theo thời gian
+    allUpdates.sort((a, b) => {
+      const ta = a.channel_post?.date || a.message?.date || 0;
+      const tb = b.channel_post?.date || b.message?.date || 0;
+      return ta - tb;
+    });
+
+    for(const update of allUpdates) {
+      const post = update.channel_post || update.message;
+      if(!post) continue;
+      const msg   = post.text || '';
+      const fromId = String(post.chat?.id || '');
+      const msgDate = post.date || 0;
+      const msgDay  = new Date(msgDate * 1000).toDateString();
+
+      // Chỉ lấy: đúng chatId + hôm nay
+      if(!msg || fromId !== chatId || msgDay !== todayStr) continue;
+
+      const bank = detectBank(msg);
+      const amt  = extractAmt(msg, bank);
+      if(amt <= 0) continue;
+
+      const added = addTransaction(amt, msg, bank, msgDate * 1000, false);
+      if(added) newCount++;
+    }
+
+    setLoadingBar(100);
+
+    if(newCount > 0) {
+      // Re-sort logs theo thời gian mới nhất lên đầu
+      logs.sort((a, b) => {
+        const ta = allTransactions.find(x => x.raw === a.raw)?.t || 0;
+        const tb = allTransactions.find(x => x.raw === b.raw)?.t || 0;
+        return tb - ta;
+      });
+      renderLog();
+      renderStats();
+      toast(`✓ Đồng bộ thêm ${newCount} giao dịch từ Telegram`);
+    } else if(allTransactions.length === 0) {
+      toast('✓ Kết nối thành công! Đang chờ giao dịch mới...');
+    } else {
+      toast('✓ Dữ liệu đã đầy đủ, đang lắng nghe...');
+    }
+
+    setTimeout(() => setLoadingBar(0), 600);
+
+  } catch(e) {
+    console.error(e);
+    toast('⚠ Lỗi đồng bộ Telegram!');
+    setLoadingBar(0);
+  }
+}
+
+// ── BƯỚC 3: POLL REALTIME ──
 async function pollTelegram(token, chatId) {
   try {
-    const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&limit=10&timeout=1`;
+    const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&limit=10&timeout=1&allowed_updates=["channel_post","message"]`;
     const res = await fetch(url);
     const data = await res.json();
     if(!data.ok) { setStatus('off','Lỗi Token!'); return; }
     setStatus('on','Đang lắng nghe');
+
     if(data.result && data.result.length > 0) {
       for(const update of data.result) {
         lastUpdateId = update.update_id;
-        const msg = update.message?.text || update.channel_post?.text || '';
-        const fromId = String(update.message?.chat?.id || update.channel_post?.chat?.id || '');
-        // Chỉ xử lý tin từ đúng Chat ID
+        const post = update.channel_post || update.message;
+        if(!post) continue;
+        const msg    = post.text || '';
+        const fromId = String(post.chat?.id || '');
         if(msg && fromId === chatId) {
           processMessage(msg);
         }
@@ -830,81 +932,18 @@ async function pollTelegram(token, chatId) {
   } catch(e) { setStatus('off','Mất kết nối...'); }
 }
 
-function testVoice() { speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.'); }
+// ── UI HELPERS ──
+function setLoadingBar(pct) {
+  document.getElementById('loading-bar').style.width = pct + '%';
+}
+
+function testVoice() {
+  speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.');
+}
 
 function testSMS(text) { processMessage(text); }
 
-// ── THỐNG KÊ — tính từ allTransactions (đồng bộ mọi thiết bị) ──
-// allTransactions là mảng tất cả giao dịch nhận được trong session
-// Mỗi thiết bị poll Telegram → nhận cùng dữ liệu → thống kê giống nhau
-
-// Lưu tất cả giao dịch hôm nay vào bộ nhớ
-let allTransactions = [];
-
-function saveStat(amt, bank, raw) {
-  const today = new Date().toDateString();
-  // Tránh trùng lặp giao dịch (cùng nội dung + cùng số tiền)
-  const exists = allTransactions.some(x => x.raw === raw && x.amt === amt);
-  if(exists) return;
-  allTransactions.push({
-    amt, bank: bank.key, bankName: bank.name,
-    color: bank.color, raw,
-    t: Date.now(),
-    h: new Date().getHours(),
-    date: today
-  });
-  renderStats();
-}
-
-// Khi bắt đầu — load lịch sử hôm nay từ Telegram (100 tin gần nhất)
-async function loadTodayFromTelegram(token, chatId) {
-  try {
-    const today = new Date().toDateString();
-    // QUAN TRỌNG: Không dùng offset=-100 (Telegram không hỗ trợ offset âm)
-    // Lấy toàn bộ tin chưa đọc (tối đa 100), sau đó cập nhật lastUpdateId
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`);
-    const data = await res.json();
-    if(!data.ok) {
-      toast('⚠ Token không hợp lệ hoặc lỗi kết nối!');
-      return;
-    }
-    allTransactions = [];
-    for(const update of data.result) {
-      const msg = update.message?.text || update.channel_post?.text || '';
-      const fromId = String(update.message?.chat?.id || update.channel_post?.chat?.id || '');
-      const msgDate = update.message?.date || update.channel_post?.date || 0;
-      const msgDay = new Date(msgDate * 1000).toDateString();
-
-      // Luôn cập nhật lastUpdateId TRƯỚC để pollTelegram chỉ lấy tin MỚI sau này
-      if(update.update_id > lastUpdateId) lastUpdateId = update.update_id;
-
-      // Chỉ hiển thị lịch sử: đúng chatId, hôm nay, và có số tiền hợp lệ
-      if(msg && fromId === chatId && msgDay === today) {
-        const bank = detectBank(msg);
-        const amt = extractAmt(msg, bank);
-        if(amt > 0) {
-          allTransactions.push({
-            amt, bank: bank.key, bankName: bank.name,
-            color: bank.color, raw: msg,
-            t: msgDate * 1000,
-            h: new Date(msgDate * 1000).getHours(),
-            date: today
-          });
-          addLog(amt, msg, bank, false);
-        }
-      }
-    }
-    renderStats();
-    if(allTransactions.length > 0) {
-      toast(`✓ Đã load ${allTransactions.length} giao dịch hôm nay!`);
-    } else {
-      toast('✓ Kết nối thành công! Đang chờ giao dịch mới...');
-    }
-  } catch(e) {
-    toast('⚠ Lỗi kết nối Telegram!');
-  }
-}
-
+// ── RENDER STATS ──
 function renderStats() {
   const stats = allTransactions;
   const fmtFull = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
@@ -918,7 +957,6 @@ function renderStats() {
   document.getElementById('stats-count').textContent = count;
   document.getElementById('stats-avg').textContent = fmtFull(avg);
 
-  // Theo từng ngân hàng
   const byBank = {};
   stats.forEach(s => {
     if(!byBank[s.bank]) byBank[s.bank] = { name:s.bankName, color:s.color, total:0, count:0 };
@@ -930,7 +968,6 @@ function renderStats() {
   if(!Object.keys(byBank).length) {
     bankEl.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;">Chưa có dữ liệu hôm nay</div>';
   } else {
-    // Sắp xếp theo tổng tiền giảm dần
     const sorted = Object.entries(byBank).sort((a,b)=>b[1].total-a[1].total);
     bankEl.innerHTML = sorted.map(([k,v])=>{
       const pct = total ? Math.round(v.total/total*100) : 0;
@@ -951,7 +988,6 @@ function renderStats() {
     }).join('');
   }
 
-  // Biểu đồ theo giờ
   const byHour = Array(24).fill(0);
   stats.forEach(s => { byHour[s.h] += s.amt; });
   const maxH = Math.max(...byHour, 1);
@@ -965,14 +1001,14 @@ function renderStats() {
   }).join('');
 }
 
-// Xuất CSV
+// ── EXPORT CSV ──
 function exportCSV() {
   const stats = allTransactions;
   if(!stats.length) { toast('⚠ Chưa có dữ liệu!'); return; }
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
   const rows = [
     ['Thời gian','Ngân hàng','Số tiền','Nội dung SMS'],
-    ...stats.map(s=>[
+    ...stats.sort((a,b)=>a.t-b.t).map(s=>[
       new Date(s.t).toLocaleString('vi-VN'),
       s.bankName,
       fmt(s.amt),
@@ -1013,7 +1049,7 @@ function setSpd(s, el) {
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 3000);
+  setTimeout(()=>t.classList.remove('show'), 3500);
 }
 </script>
 </body>
