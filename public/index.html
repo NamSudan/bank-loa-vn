@@ -510,40 +510,59 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
 
 <script>
 // ── BANK PATTERNS ──
+// Quy luật chung của SMS ngân hàng VN:
+// - Số tiền: +X,XXX VND hoặc +X.XXXvnd (luôn có dấu +)
+// - Tên ngân hàng: xuất hiện ở đầu tin HOẶC trong "Ref TênNH:"
+// - Số dư: "SD X,XXXvnd" hoặc "So du: X,XXX"
+// detectBank() ưu tiên tìm "Ref TênNH:" trước để chính xác hơn
 const BANKS = {
   VCB:  { name:'Vietcombank', short:'VCB', color:'#006D38',
-    patterns:[/VCB|VIETCOMBANK|Vietcombank|vcb/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*Vietcombank|\bVCB\b|VIETCOMBANK|Vietcombank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   AGRI: { name:'Agribank', short:'AGR', color:'#E31837',
-    patterns:[/AGRI|Agribank|agribank/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*Agribank|\bAGRI\b|Agribank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   TCB:  { name:'Techcombank', short:'TCB', color:'#E61F2B',
-    patterns:[/TCB|TECHCOM|Techcombank/i],
-    amtPattern:/nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+    patterns:[/Ref\s*Techcombank|\bTCB\b|TECHCOM|Techcombank/i],
+    amtPattern:/nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)\s*VND/i },
   MB:   { name:'MB Bank', short:'MB', color:'#8B0000',
-    patterns:[/MB\s*BANK|MBBANK|MBBank/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*MB|\bMB\s*BANK\b|MBBANK|MBBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   BIDV: { name:'BIDV', short:'BIDV', color:'#003087',
-    patterns:[/BIDV/i],
-    amtPattern:/So tien[:\s]+[+]?([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+    patterns:[/Ref\s*BIDV|\bBIDV\b/i],
+    amtPattern:/So tien[:\s]+[+]?([\d,\.]+)|[+]\s*([\d,\.]+)\s*VND/i },
   VTB:  { name:'Vietinbank', short:'VTB', color:'#003087',
-    patterns:[/VIETINBANK|Vietinbank|CTG/i],
-    amtPattern:/Nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)/i },
+    patterns:[/Ref\s*Vietinbank|VIETINBANK|Vietinbank|\bCTG\b/i],
+    amtPattern:/Nhan\s+([\d,\.]+)|[+]\s*([\d,\.]+)\s*VND/i },
   ACB:  { name:'ACB', short:'ACB', color:'#0066B3',
-    patterns:[/\bACB\b/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*ACB|\bACB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   TPB:  { name:'TPBank', short:'TPB', color:'#E4032E',
-    patterns:[/TPBANK|TPBank/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*TPBank|Ref\s*TPBANK|\bTPBANK\b|TPBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   VPB:  { name:'VPBank', short:'VPB', color:'#007A3D',
-    patterns:[/VPBANK|VPBank/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*VPBank|Ref\s*VPBANK|\bVPBANK\b|VPBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
   STB:  { name:'Sacombank', short:'STB', color:'#0066B2',
-    patterns:[/SACOMBANK|Sacombank|STB/i],
-    amtPattern:/[+]\s*([\d,\.]+)\s*(?:VND|vnd|đ)/i },
+    patterns:[/Ref\s*Sacombank|SACOMBANK|Sacombank|\bSTB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
+  HDB:  { name:'HDBank', short:'HDB', color:'#004B93',
+    patterns:[/Ref\s*HDBank|\bHDB\b|HDBANK|HDBank/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
+  MSB:  { name:'MSB', short:'MSB', color:'#E4032E',
+    patterns:[/Ref\s*MSB|\bMSB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
+  OCB:  { name:'OCB', short:'OCB', color:'#009944',
+    patterns:[/Ref\s*OCB|\bOCB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
+  SHB:  { name:'SHB', short:'SHB', color:'#C8102E',
+    patterns:[/Ref\s*SHB|\bSHB\b/i],
+    amtPattern:/[+]\s*([\d,\.]+)\s*VND/i },
 };
 
-const GENERIC_AMT = /[+]?\s*([\d,\.]{3,})\s*(?:VND|vnd|vnđ|đ)/i;
+// Fallback: bắt số tiền dương bất kỳ nếu không match pattern riêng
+// Ưu tiên số sau dấu + và trước VND/vnd/đ
+const GENERIC_AMT = /[+]\s*([\d,\.]{3,})\s*(?:VND|vnd|vnđ|đ)/i;
 
 const SAMPLES = [
   { bank:'VCB',  text:'VCB: So du TK 1234567890 +350,000 VND luc 09:12 28/04. TU NGUYEN VAN A. Ref 123456' },
@@ -608,16 +627,40 @@ function detectBank(text) {
 }
 
 // ── EXTRACT AMOUNT ──
+// Xử lý cả 2 format: 53,000 (dấu phẩy = phân cách nghìn) và 1.500.000 (dấu chấm = phân cách nghìn)
+function parseVNAmount(raw) {
+  if(!raw) return 0;
+  // Xóa khoảng trắng
+  raw = raw.trim();
+  // Format VN: 1.500.000 hoặc 1,500,000 hoặc 53,000 hoặc 1500000
+  // Nếu có nhiều dấu phẩy/chấm → tất cả là phân cách nghìn → xóa hết
+  const commas = (raw.match(/,/g)||[]).length;
+  const dots   = (raw.match(/\./g)||[]).length;
+  if(commas > 1 || dots > 1) {
+    // Nhiều dấu → đều là phân cách nghìn
+    return parseInt(raw.replace(/[,\.]/g,''));
+  }
+  // 1 dấu phẩy: 53,000 → phân cách nghìn (VN không dùng phẩy thập phân cho tiền)
+  if(commas === 1) return parseInt(raw.replace(/,/g,''));
+  // 1 dấu chấm: 53.000 → phân cách nghìn
+  if(dots === 1) return parseInt(raw.replace(/\./g,''));
+  return parseInt(raw);
+}
+
 function extractAmt(text, bank) {
   const pattern = bank?.amtPattern || GENERIC_AMT;
   const m = text.match(pattern);
   if(m) {
-    const raw = (m[1]||m[2]||'').replace(/[,\.]/g,'');
-    const n = parseInt(raw);
-    return n > 999 ? n : 0;
+    const raw = m[1]||m[2]||'';
+    const n = parseVNAmount(raw);
+    if(n > 999) return n;
   }
   const g = text.match(GENERIC_AMT);
-  return g ? parseInt(g[1].replace(/[,\.]/g,'')) : 0;
+  if(g) {
+    const n = parseVNAmount(g[1]);
+    if(n > 999) return n;
+  }
+  return 0;
 }
 
 // ── BUILD SPEECH ──
