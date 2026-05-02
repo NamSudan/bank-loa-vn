@@ -399,10 +399,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
   </div>
   <div class="sec-body">
     <div class="field">
-      <label>Vercel Server URL</label>
-      <input id="vercel-url" placeholder="https://bank-loa.vercel.app">
-    </div>
-    <div class="field">
       <label>Telegram Bot Token</label>
       <input id="bot-token" placeholder="1234567890:AAFxxxxxxxxxx">
     </div>
@@ -413,7 +409,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
     <div class="btn-row">
       <button class="btn btn-solid" id="btn-start" onclick="start()">▶ Bắt đầu lắng nghe</button>
       <button class="btn btn-stop" id="btn-stop" onclick="stop()" style="display:none;">⏹ Dừng</button>
-      <button class="btn btn-ghost" onclick="registerWebhook()">🔗 Đăng ký Webhook</button>
       <button class="btn btn-ghost" onclick="testVoice()">🔊 Thử loa</button>
     </div>
   </div>
@@ -459,6 +454,42 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
   <div id="test-panel" style="display:none; padding:14px; border-top:1px solid var(--rule);">
     <div class="sec-title" style="margin-bottom:10px;">Bấm để thử loa ngay</div>
     <div class="test-sms-grid" id="test-grid"></div>
+  </div>
+</div>
+
+<!-- Thống kê ngày -->
+<div class="section">
+  <div class="sec-hdr">
+    <div class="sec-title">📊 Thống Kê Hôm Nay</div>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="stats-date"></span>
+  </div>
+  <div style="padding:16px;">
+    <!-- Tổng quan -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Tổng tiền</div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent);" id="stats-total">0đ</div>
+      </div>
+      <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Giao dịch</div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink);" id="stats-count">0</div>
+      </div>
+      <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Trung bình</div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue);" id="stats-avg">0đ</div>
+      </div>
+    </div>
+    <!-- Theo ngân hàng -->
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Theo ngân hàng</div>
+    <div id="stats-banks"></div>
+    <!-- Biểu đồ theo giờ -->
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 8px;">Biểu đồ theo giờ</div>
+    <div id="stats-chart" style="display:flex;align-items:flex-end;gap:3px;height:60px;"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--muted);">
+      <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
+    </div>
+    <!-- Nút xuất -->
+    <button class="btn btn-ghost" style="width:100%;margin-top:14px;font-size:11px;" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
   </div>
 </div>
 
@@ -549,17 +580,19 @@ function initTestGrid() {
 initTestGrid();
 
 // ── LOAD CONFIG ──
+let lastUpdateId = 0;
 window.onload = () => {
-  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+  ['bot-token','chat-id'].forEach(k=>{
     const v = localStorage.getItem('bankloa_'+k);
     if(v) document.getElementById(k).value = v;
   });
   if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   if(window.speechSynthesis) speechSynthesis.getVoices();
+  renderStats();
 };
 
 function saveConfig() {
-  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+  ['bot-token','chat-id'].forEach(k=>{
     const v = document.getElementById(k).value.trim();
     if(v) localStorage.setItem('bankloa_'+k, v);
   });
@@ -620,6 +653,9 @@ function processMessage(text) {
   // Add to log
   addLog(amt, text, bank);
 
+  // Lưu thống kê
+  saveStat(amt, bank, text);
+
   // Speak
   if(document.getElementById('v-on').checked) speak(speech);
 
@@ -666,8 +702,11 @@ function setSpeaking(on) {
 }
 
 // ── LOG ──
-function addLog(amt, raw, bank) {
+function addLog(amt, raw, bank, shouldSpeak=true) {
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
+  // Tránh thêm trùng
+  const exists = logs.some(l=>l.raw===raw && l.amt===amt);
+  if(exists) return;
   logs.unshift({ amt, raw, bank, t: new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
   renderLog();
 }
@@ -694,16 +733,20 @@ function renderLog() {
 
 // ── START/STOP ──
 function start() {
-  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
-  if(!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+  const token = document.getElementById('bot-token').value.trim();
+  const chatId = document.getElementById('chat-id').value.trim();
+  if(!token || !chatId) { toast('⚠ Nhập Token và Chat ID trước!'); return; }
   saveConfig();
-  lastTime = Date.now() - 3000;
   setStatus('wait','Đang kết nối...');
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-stop').style.display = 'inline-flex';
-  pollServer();
-  polling = setInterval(pollServer, 1000);
-  toast('✓ Đang lắng nghe tất cả ngân hàng!');
+  removeWebhook(token).then(async () => {
+    // Load lịch sử hôm nay từ Telegram trước
+    await loadTodayFromTelegram(token, chatId);
+    // Sau đó bắt đầu poll tin mới
+    polling = setInterval(() => pollTelegram(token, chatId), 2000);
+    setStatus('on','Đang lắng nghe');
+  });
 }
 
 function stop() {
@@ -714,36 +757,176 @@ function stop() {
   setSpeaking(false);
 }
 
-async function pollServer() {
-  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+// Xóa webhook cũ để Telegram cho phép dùng getUpdates
+async function removeWebhook(token) {
   try {
-    const res = await fetch(`${url}/api/webhook?since=${lastTime}`);
-    const data = await res.json();
-    setStatus('on','Đang lắng nghe');
-    if(data.messages && data.messages.length > 0) {
-      data.messages.forEach(m => {
-        lastTime = Math.max(lastTime, m.time);
-        processMessage(m.text);
-      });
-    }
-  } catch(e) { setStatus('off','Mất kết nối...'); }
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
+  } catch(e) {}
 }
 
-async function registerWebhook() {
-  const token = document.getElementById('bot-token').value.trim();
-  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
-  if(!token||!url) { toast('⚠ Nhập Token và Vercel URL!'); return; }
+// Poll thẳng Telegram getUpdates — không cần server
+async function pollTelegram(token, chatId) {
   try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(url+'/api/webhook')}`);
-    const d = await r.json();
-    d.ok ? toast('✓ Webhook đã đăng ký thành công!') : toast('✗ Lỗi: ' + d.description);
-    if(d.ok) saveConfig();
-  } catch(e) { toast('✗ Không kết nối được!'); }
+    const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&limit=10&timeout=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.ok) { setStatus('off','Lỗi Token!'); return; }
+    setStatus('on','Đang lắng nghe');
+    if(data.result && data.result.length > 0) {
+      for(const update of data.result) {
+        lastUpdateId = update.update_id;
+        const msg = update.message?.text || update.channel_post?.text || '';
+        const fromId = String(update.message?.chat?.id || update.channel_post?.chat?.id || '');
+        // Chỉ xử lý tin từ đúng Chat ID
+        if(msg && fromId === chatId) {
+          processMessage(msg);
+        }
+      }
+    }
+  } catch(e) { setStatus('off','Mất kết nối...'); }
 }
 
 function testVoice() { speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.'); }
 
 function testSMS(text) { processMessage(text); }
+
+// ── THỐNG KÊ — tính từ allTransactions (đồng bộ mọi thiết bị) ──
+// allTransactions là mảng tất cả giao dịch nhận được trong session
+// Mỗi thiết bị poll Telegram → nhận cùng dữ liệu → thống kê giống nhau
+
+// Lưu tất cả giao dịch hôm nay vào bộ nhớ
+let allTransactions = [];
+
+function saveStat(amt, bank, raw) {
+  const today = new Date().toDateString();
+  allTransactions.push({
+    amt, bank: bank.key, bankName: bank.name,
+    color: bank.color, raw,
+    t: Date.now(),
+    h: new Date().getHours(),
+    date: today
+  });
+  renderStats();
+}
+
+// Khi bắt đầu — load lịch sử hôm nay từ Telegram (100 tin gần nhất)
+async function loadTodayFromTelegram(token, chatId) {
+  try {
+    const today = new Date().toDateString();
+    // Lấy 100 tin gần nhất từ Telegram
+    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100&offset=-100`);
+    const data = await res.json();
+    if(!data.ok) return;
+    allTransactions = [];
+    for(const update of data.result) {
+      const msg = update.message?.text || update.channel_post?.text || '';
+      const fromId = String(update.message?.chat?.id || update.channel_post?.chat?.id || '');
+      const msgDate = update.message?.date || update.channel_post?.date || 0;
+      const msgDay = new Date(msgDate * 1000).toDateString();
+      if(msg && fromId === chatId && msgDay === today) {
+        const bank = detectBank(msg);
+        const amt = extractAmt(msg, bank);
+        if(amt > 0) {
+          allTransactions.push({
+            amt, bank: bank.key, bankName: bank.name,
+            color: bank.color, raw: msg,
+            t: msgDate * 1000,
+            h: new Date(msgDate * 1000).getHours(),
+            date: today
+          });
+          // Thêm vào log UI (không phát loa)
+          addLog(amt, msg, bank, false);
+        }
+      }
+      // Cập nhật lastUpdateId
+      if(update.update_id > lastUpdateId) lastUpdateId = update.update_id;
+    }
+    renderStats();
+    toast(`✓ Đã load ${allTransactions.length} giao dịch hôm nay!`);
+  } catch(e) {}
+}
+
+function renderStats() {
+  const stats = allTransactions;
+  const fmtFull = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+
+  const total = stats.reduce((s,x)=>s+x.amt, 0);
+  const count = stats.length;
+  const avg = count ? Math.round(total/count) : 0;
+
+  document.getElementById('stats-date').textContent = new Date().toLocaleDateString('vi-VN');
+  document.getElementById('stats-total').textContent = fmtFull(total);
+  document.getElementById('stats-count').textContent = count;
+  document.getElementById('stats-avg').textContent = fmtFull(avg);
+
+  // Theo từng ngân hàng
+  const byBank = {};
+  stats.forEach(s => {
+    if(!byBank[s.bank]) byBank[s.bank] = { name:s.bankName, color:s.color, total:0, count:0 };
+    byBank[s.bank].total += s.amt;
+    byBank[s.bank].count++;
+  });
+
+  const bankEl = document.getElementById('stats-banks');
+  if(!Object.keys(byBank).length) {
+    bankEl.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;">Chưa có dữ liệu hôm nay</div>';
+  } else {
+    // Sắp xếp theo tổng tiền giảm dần
+    const sorted = Object.entries(byBank).sort((a,b)=>b[1].total-a[1].total);
+    bankEl.innerHTML = sorted.map(([k,v])=>{
+      const pct = total ? Math.round(v.total/total*100) : 0;
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px;">
+          <span style="font-weight:700;display:flex;align-items:center;gap:6px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${v.color||'var(--ink)'};display:inline-block;"></span>
+            ${v.name}
+            <span style="font-size:10px;color:var(--muted);font-weight:400;">${v.count} GD</span>
+          </span>
+          <span style="font-family:var(--mono);color:var(--accent);font-weight:700;">${fmtFull(v.total)}</span>
+        </div>
+        <div style="background:var(--rule);border-radius:2px;height:5px;position:relative;">
+          <div style="background:${v.color||'var(--accent)'};height:5px;border-radius:2px;width:${pct}%;transition:width .6s;"></div>
+          <span style="position:absolute;right:0;top:-14px;font-size:9px;color:var(--muted);font-family:var(--mono);">${pct}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Biểu đồ theo giờ
+  const byHour = Array(24).fill(0);
+  stats.forEach(s => { byHour[s.h] += s.amt; });
+  const maxH = Math.max(...byHour, 1);
+  const curH = new Date().getHours();
+  const chartEl = document.getElementById('stats-chart');
+  chartEl.innerHTML = byHour.map((v,h)=>{
+    const ht = Math.max(2, Math.round(v/maxH*56));
+    const isNow = h === curH;
+    const fmtV = v ? new Intl.NumberFormat('vi-VN').format(v)+'đ' : 'Không có';
+    return `<div title="${h}h: ${fmtV}" style="flex:1;background:${isNow?'var(--accent)':v?'var(--accent2)':'var(--rule)'};height:${ht}px;border-radius:1px;cursor:pointer;transition:all .2s;opacity:${v?1:.4};" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='${v?1:.4}'"></div>`;
+  }).join('');
+}
+
+// Xuất CSV
+function exportCSV() {
+  const stats = loadTodayStats();
+  if(!stats.length) { toast('⚠ Chưa có dữ liệu!'); return; }
+  const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
+  const rows = [
+    ['Thời gian','Ngân hàng','Số tiền','Nội dung SMS'],
+    ...stats.map(s=>[
+      new Date(s.t).toLocaleString('vi-VN'),
+      s.bankName,
+      fmt(s.amt),
+      '"' + s.raw.replace(/"/g,'""') + '"'
+    ])
+  ];
+  const csv = '\uFEFF' + rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `giao-dich-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('✓ Đã xuất file CSV!');
+}
 
 function showTestPanel() {
   const p = document.getElementById('test-panel');
