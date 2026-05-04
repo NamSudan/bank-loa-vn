@@ -801,10 +801,11 @@ function splitTextChunks(text, maxLen) {
   return chunks.length ? chunks : [text.slice(0, maxLen)];
 }
 
-// Phát từng đoạn lần lượt qua Google Translate TTS
+// Phát từng đoạn lần lượt — gọi qua /api/tts proxy để tránh CORS
 function playChunks(chunks, idx, vol) {
   if(idx >= chunks.length) { setSpeaking(false); return; }
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(chunks[idx])}`;
+  // Gọi server proxy thay vì Google trực tiếp → không bị CORS
+  const url = `/api/tts?text=${encodeURIComponent(chunks[idx])}`;
   if(_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
   _audioEl = new Audio(url);
   _audioEl.volume = Math.min(1, Math.max(0, vol));
