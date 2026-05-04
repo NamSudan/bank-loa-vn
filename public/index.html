@@ -987,19 +987,35 @@ async function registerWebhook() {
   } catch(e) { toast('✗ Không kết nối được!'); }
 }
 
-// Load config
+// Load config + tự động start nếu đã có token & chatId
 window.onload = () => {
-  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+  ['vercel-url','bot-token','chat-id','channel-id'].forEach(k=>{
+    const el = document.getElementById(k);
+    if(!el) return;
     const v = localStorage.getItem('bankloa_'+k);
-    if(v) document.getElementById(k).value = v;
+    if(v) el.value = v;
   });
   if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   renderStats();
+
+  // Tự động bắt đầu lắng nghe nếu đã cấu hình sẵn
+  const token   = localStorage.getItem('bankloa_bot-token');
+  const chatId  = localStorage.getItem('bankloa_chat-id');
+  const chanId  = localStorage.getItem('bankloa_channel-id');
+  if(token && chatId) {
+    // Delay nhỏ để UI render xong
+    setTimeout(() => {
+      toast('🔄 Đang tự động kết nối...');
+      start();
+    }, 800);
+  }
 };
 
 function saveConfig() {
-  ['vercel-url','bot-token','chat-id'].forEach(k=>{
-    const v = document.getElementById(k).value.trim();
+  ['vercel-url','bot-token','chat-id','channel-id'].forEach(k=>{
+    const el = document.getElementById(k);
+    if(!el) return;
+    const v = el.value.trim();
     if(v) localStorage.setItem('bankloa_'+k, v);
   });
 }
