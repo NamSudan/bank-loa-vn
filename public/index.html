@@ -560,7 +560,6 @@ const SAMPLES = [
 
 // ── STATE ──
 let polling = null;
-let lastTime = Date.now() - 2000;
 let rate = 1;
 let logs = [];
 let filterBankKey = 'all';
@@ -585,9 +584,8 @@ function initTestGrid() {
 initTestGrid();
 
 // ── LOAD CONFIG ──
-let lastUpdateId = 0;
 window.onload = () => {
-  ['bot-token','chat-id'].forEach(k=>{
+  ['vercel-url','bot-token','chat-id'].forEach(k=>{
     const v = localStorage.getItem('bankloa_'+k);
     if(v) document.getElementById(k).value = v;
   });
@@ -597,8 +595,8 @@ window.onload = () => {
 };
 
 function saveConfig() {
-  ['bot-token','chat-id'].forEach(k=>{
-    const v = document.getElementById(k).value.trim();
+  ['vercel-url','bot-token','chat-id'].forEach(k=>{
+    const v = document.getElementById(k)?.value?.trim();
     if(v) localStorage.setItem('bankloa_'+k, v);
   });
 }
