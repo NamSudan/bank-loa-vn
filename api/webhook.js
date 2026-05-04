@@ -1,11 +1,12 @@
 // api/webhook.js — Vercel Serverless Function
-// Telegram → lưu Upstash → client poll timestamp 3s → chỉ lấy tin khi có mới
+// Lưu theo từng ngày: bank_msgs:YYYY-MM-DD
+// Hỗ trợ: nhận tin, poll timestamp, lấy tin theo ngày, xóa theo ngày, liệt kê ngày
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_KV_REST_API_URL;
+const UPSTASH_URL   = process.env.UPSTASH_REDIS_KV_REST_API_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_KV_REST_API_TOKEN;
-const MSG_KEY = 'bank_messages';
-const TS_KEY  = 'bank_last_ts';
-const MAX_MSGS = 100;
+const MAX_PER_DAY   = 500; // tối đa 500 giao dịch/ngày
+const TS_KEY        = 'bank_last_ts';
+const DAYS_SET_KEY  = 'bank_days'; // Set lưu danh sách các ngày đã có dữ liệu
 
 async function redisCmd(...args) {
   const res = await fetch(`${UPSTASH_URL}/${args.map(encodeURIComponent).join('/')}`, {
@@ -14,25 +15,42 @@ async function redisCmd(...args) {
   return res.json();
 }
 
+// Key theo ngày: bank_msgs:2026-05-04
+function dayKey(dateStr) {
+  return `bank_msgs:${dateStr}`;
+}
+
+// Lấy ngày hôm nay dạng YYYY-MM-DD theo timezone +7
+function todayStr() {
+  return new Date(Date.now() + 7*60*60*1000).toISOString().slice(0,10);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── POST: Telegram webhook gọi vào khi có tin mới ──
+  // ── POST: Telegram webhook → lưu tin vào key ngày hôm nay ──
   if (req.method === 'POST') {
     try {
       const update = req.body;
       const text = update?.message?.text || update?.channel_post?.text || '';
       if (!text) return res.status(200).json({ ok: true });
 
-      const now = Date.now();
-      const msg = JSON.stringify({ text, id: update?.update_id, time: now });
+      const now  = Date.now();
+      const date = todayStr();
+      const key  = dayKey(date);
+      const msg  = JSON.stringify({ text, id: update?.update_id, time: now });
 
-      // Lưu tin + cập nhật timestamp — chỉ 3 lệnh Redis
-      await redisCmd('LPUSH', MSG_KEY, msg);
-      await redisCmd('LTRIM', MSG_KEY, '0', String(MAX_MSGS - 1));
+      // Lưu tin vào list của ngày hôm nay
+      await redisCmd('LPUSH', key, msg);
+      await redisCmd('LTRIM', key, '0', String(MAX_PER_DAY - 1));
+      // Đặt TTL 30 ngày cho key này (tự dọn sau 30 ngày)
+      await redisCmd('EXPIRE', key, String(30 * 24 * 60 * 60));
+      // Thêm ngày vào tập hợp danh sách ngày
+      await redisCmd('SADD', DAYS_SET_KEY, date);
+      // Cập nhật timestamp để client biết có tin mới
       await redisCmd('SET', TS_KEY, String(now));
 
       return res.status(200).json({ ok: true });
@@ -41,7 +59,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── GET /api/webhook?type=ts — Chỉ lấy timestamp (nhẹ, poll mỗi 3s) ──
+  // ── GET ?type=ts — Poll timestamp (nhẹ, mỗi 3s) ──
   if (req.method === 'GET' && req.query.type === 'ts') {
     try {
       const result = await redisCmd('GET', TS_KEY);
@@ -51,23 +69,76 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── GET /api/webhook?since=... — Lấy tin mới (chỉ gọi khi timestamp đổi) ──
+  // ── GET ?type=days — Lấy danh sách các ngày có dữ liệu ──
+  if (req.method === 'GET' && req.query.type === 'days') {
+    try {
+      const result = await redisCmd('SMEMBERS', DAYS_SET_KEY);
+      const days = (result.result || []).sort().reverse(); // mới nhất lên đầu
+      return res.status(200).json({ ok: true, days });
+    } catch(e) {
+      return res.status(200).json({ ok: true, days: [] });
+    }
+  }
+
+  // ── GET ?date=YYYY-MM-DD — Lấy tất cả tin của 1 ngày cụ thể ──
+  // ── GET ?since=timestamp — Lấy tin mới hôm nay (realtime poll) ──
   if (req.method === 'GET') {
     try {
-      const since = parseInt(req.query.since || '0');
-      const today = new Date().toDateString();
-      const result = await redisCmd('LRANGE', MSG_KEY, '0', String(MAX_MSGS - 1));
+      // Lấy tin của ngày cụ thể
+      if (req.query.date) {
+        const date   = req.query.date;
+        const key    = dayKey(date);
+        const result = await redisCmd('LRANGE', key, '0', String(MAX_PER_DAY - 1));
+        const msgs   = (result.result || []).map(m => {
+          try { return JSON.parse(m); } catch(e) { return null; }
+        }).filter(Boolean).sort((a,b) => a.time - b.time); // sắp xếp cũ → mới
+        return res.status(200).json({ ok: true, messages: msgs });
+      }
+
+      // Lấy tin mới hôm nay (since=timestamp)
+      const since  = parseInt(req.query.since || '0');
+      const date   = todayStr();
+      const key    = dayKey(date);
+      const result = await redisCmd('LRANGE', key, '0', String(MAX_PER_DAY - 1));
       const allMsgs = (result.result || []).map(m => {
         try { return JSON.parse(m); } catch(e) { return null; }
       }).filter(Boolean);
 
-      const newMsgs = allMsgs.filter(m =>
-        m.time > since &&
-        new Date(m.time).toDateString() === today
-      );
+      const newMsgs = allMsgs
+        .filter(m => m.time > since)
+        .sort((a,b) => a.time - b.time);
+
       return res.status(200).json({ ok: true, messages: newMsgs });
     } catch(e) {
       return res.status(200).json({ ok: true, messages: [] });
+    }
+  }
+
+  // ── DELETE ?date=YYYY-MM-DD — Xóa dữ liệu 1 ngày cụ thể ──
+  // ── DELETE ?date=all — Xóa toàn bộ ──
+  if (req.method === 'DELETE') {
+    try {
+      const date = req.query.date;
+      if (!date) return res.status(400).json({ ok: false, error: 'Missing date param' });
+
+      if (date === 'all') {
+        // Xóa tất cả các ngày
+        const daysResult = await redisCmd('SMEMBERS', DAYS_SET_KEY);
+        const days = daysResult.result || [];
+        for (const d of days) {
+          await redisCmd('DEL', dayKey(d));
+        }
+        await redisCmd('DEL', DAYS_SET_KEY);
+        await redisCmd('DEL', TS_KEY);
+        return res.status(200).json({ ok: true, deleted: days.length });
+      } else {
+        // Xóa 1 ngày cụ thể
+        await redisCmd('DEL', dayKey(date));
+        await redisCmd('SREM', DAYS_SET_KEY, date);
+        return res.status(200).json({ ok: true, deleted: 1 });
+      }
+    } catch(e) {
+      return res.status(500).json({ ok: false, error: e.message });
     }
   }
 
