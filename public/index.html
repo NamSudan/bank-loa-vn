@@ -4,7 +4,141 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loa Ngân Hàng VN</title>
-<script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE"></script>
+<script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE">
+// ── QUẢN LÝ LỊCH SỬ THEO NGÀY ──
+
+// Tải danh sách các ngày có dữ liệu
+async function loadDayList() {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  if(!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+  const el = document.getElementById('day-list-body');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);">⏳ Đang tải...</div>';
+  try {
+    const res = await fetch(`${url}/api/webhook?type=days`);
+    const data = await res.json();
+    const days = data.days || [];
+    if(!days.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">Chưa có dữ liệu nào trong Redis</div>';
+      return;
+    }
+    renderDayList(days, url);
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--red);text-align:center;padding:16px 0;">⚠ Lỗi kết nối server</div>';
+  }
+}
+
+// Render danh sách ngày
+function renderDayList(days, url) {
+  const el = document.getElementById('day-list-body');
+  const fmtDate = d => {
+    const dt = new Date(d + 'T00:00:00+07:00');
+    return dt.toLocaleDateString('vi-VN', { weekday:'short', year:'numeric', month:'2-digit', day:'2-digit' });
+  };
+  const today = new Date(Date.now() + 7*60*60*1000).toISOString().slice(0,10);
+
+  el.innerHTML = `
+    <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--muted);">${days.length} ngày có dữ liệu</span>
+      <button class="btn btn-stop" style="font-size:10px;padding:5px 12px;" onclick="confirmDeleteAll()">🗑 Xóa tất cả</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${days.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:3px;${d===today?'border-color:var(--accent);':''}" id="dayrow-${d}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${d===today ? '<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;">HÔM NAY</span>' : ''}
+            <span style="font-size:13px;font-weight:600;">${fmtDate(d)}</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d}</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
+            <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// Xem lịch sử 1 ngày cụ thể
+async function viewDayHistory(date) {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  toast('⏳ Đang tải lịch sử ngày ' + date + '...');
+  try {
+    const res = await fetch(`${url}/api/webhook?date=${date}`);
+    const data = await res.json();
+    const msgs = data.messages || [];
+    if(!msgs.length) { toast('Không có giao dịch nào ngày ' + date); return; }
+
+    // Load vào log và stats
+    allTransactions = [];
+    logs = [];
+    msgs.forEach(m => {
+      const bank = detectBank(m.text);
+      const amt  = extractAmt(m.text, bank);
+      if(amt > 0) {
+        const exists = allTransactions.some(x => x.raw === m.text && x.amt === amt);
+        if(!exists) {
+          allTransactions.push({
+            amt, bank: bank.key, bankName: bank.name, color: bank.color,
+            raw: m.text, t: m.time, h: new Date(m.time).getHours(),
+            date: new Date(m.time).toDateString()
+          });
+          logs.unshift({ amt, raw: m.text, bank,
+            t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+        }
+      }
+    });
+
+    renderLog();
+    renderStats();
+    document.getElementById('stats-date').textContent = new Date(date + 'T00:00:00+07:00').toLocaleDateString('vi-VN');
+    toast(`✓ Đã tải ${allTransactions.length} giao dịch ngày ${date}`);
+    // Scroll xuống log
+    document.querySelector('.section:last-of-type').scrollIntoView({ behavior:'smooth' });
+  } catch(e) {
+    toast('⚠ Lỗi tải dữ liệu!');
+  }
+}
+
+// Xác nhận xóa 1 ngày
+function confirmDeleteDay(date) {
+  const fmtDate = new Date(date + 'T00:00:00+07:00').toLocaleDateString('vi-VN');
+  if(!confirm(`Xóa toàn bộ dữ liệu ngày ${fmtDate}?\nHành động này không thể hoàn tác!`)) return;
+  deleteDay(date);
+}
+
+// Xác nhận xóa tất cả
+function confirmDeleteAll() {
+  if(!confirm('Xóa TOÀN BỘ dữ liệu tất cả các ngày?\nHành động này KHÔNG thể hoàn tác!')) return;
+  deleteDay('all');
+}
+
+// Thực hiện xóa
+async function deleteDay(date) {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  try {
+    const res = await fetch(`${url}/api/webhook?date=${date}`, { method: 'DELETE' });
+    const data = await res.json();
+    if(data.ok) {
+      toast(date === 'all' ? '✓ Đã xóa toàn bộ dữ liệu!' : `✓ Đã xóa dữ liệu ngày ${date}`);
+      // Nếu xóa ngày hôm nay → clear log hiện tại
+      const today = new Date(Date.now() + 7*60*60*1000).toISOString().slice(0,10);
+      if(date === 'all' || date === today) {
+        allTransactions = [];
+        logs = [];
+        lastTime = Date.now();
+        renderLog();
+        renderStats();
+      }
+      // Tải lại danh sách
+      setTimeout(() => loadDayList(), 500);
+    } else {
+      toast('⚠ Xóa thất bại!');
+    }
+  } catch(e) {
+    toast('⚠ Lỗi kết nối server!');
+  }
+}
+
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -495,6 +629,19 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
     </div>
     <!-- Nút xuất -->
     <button class="btn btn-ghost" style="width:100%;margin-top:14px;font-size:11px;" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
+  </div>
+</div>
+
+<!-- Quản lý lịch sử theo ngày -->
+<div class="section">
+  <div class="sec-hdr">
+    <div class="sec-title">🗂 Quản lý lịch sử</div>
+    <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" onclick="loadDayList()">🔄 Tải danh sách</button>
+  </div>
+  <div id="day-list-body" style="padding:14px;">
+    <div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">
+      Bấm "Tải danh sách" để xem các ngày có dữ liệu
+    </div>
   </div>
 </div>
 
@@ -989,6 +1136,140 @@ function toast(msg) {
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3000);
 }
+
+// ── QUẢN LÝ LỊCH SỬ THEO NGÀY ──
+
+// Tải danh sách các ngày có dữ liệu
+async function loadDayList() {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  if(!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+  const el = document.getElementById('day-list-body');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);">⏳ Đang tải...</div>';
+  try {
+    const res = await fetch(`${url}/api/webhook?type=days`);
+    const data = await res.json();
+    const days = data.days || [];
+    if(!days.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">Chưa có dữ liệu nào trong Redis</div>';
+      return;
+    }
+    renderDayList(days, url);
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--red);text-align:center;padding:16px 0;">⚠ Lỗi kết nối server</div>';
+  }
+}
+
+// Render danh sách ngày
+function renderDayList(days, url) {
+  const el = document.getElementById('day-list-body');
+  const fmtDate = d => {
+    const dt = new Date(d + 'T00:00:00+07:00');
+    return dt.toLocaleDateString('vi-VN', { weekday:'short', year:'numeric', month:'2-digit', day:'2-digit' });
+  };
+  const today = new Date(Date.now() + 7*60*60*1000).toISOString().slice(0,10);
+
+  el.innerHTML = `
+    <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--muted);">${days.length} ngày có dữ liệu</span>
+      <button class="btn btn-stop" style="font-size:10px;padding:5px 12px;" onclick="confirmDeleteAll()">🗑 Xóa tất cả</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${days.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:3px;${d===today?'border-color:var(--accent);':''}" id="dayrow-${d}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${d===today ? '<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;">HÔM NAY</span>' : ''}
+            <span style="font-size:13px;font-weight:600;">${fmtDate(d)}</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d}</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
+            <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// Xem lịch sử 1 ngày cụ thể
+async function viewDayHistory(date) {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  toast('⏳ Đang tải lịch sử ngày ' + date + '...');
+  try {
+    const res = await fetch(`${url}/api/webhook?date=${date}`);
+    const data = await res.json();
+    const msgs = data.messages || [];
+    if(!msgs.length) { toast('Không có giao dịch nào ngày ' + date); return; }
+
+    // Load vào log và stats
+    allTransactions = [];
+    logs = [];
+    msgs.forEach(m => {
+      const bank = detectBank(m.text);
+      const amt  = extractAmt(m.text, bank);
+      if(amt > 0) {
+        const exists = allTransactions.some(x => x.raw === m.text && x.amt === amt);
+        if(!exists) {
+          allTransactions.push({
+            amt, bank: bank.key, bankName: bank.name, color: bank.color,
+            raw: m.text, t: m.time, h: new Date(m.time).getHours(),
+            date: new Date(m.time).toDateString()
+          });
+          logs.unshift({ amt, raw: m.text, bank,
+            t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+        }
+      }
+    });
+
+    renderLog();
+    renderStats();
+    document.getElementById('stats-date').textContent = new Date(date + 'T00:00:00+07:00').toLocaleDateString('vi-VN');
+    toast(`✓ Đã tải ${allTransactions.length} giao dịch ngày ${date}`);
+    // Scroll xuống log
+    document.querySelector('.section:last-of-type').scrollIntoView({ behavior:'smooth' });
+  } catch(e) {
+    toast('⚠ Lỗi tải dữ liệu!');
+  }
+}
+
+// Xác nhận xóa 1 ngày
+function confirmDeleteDay(date) {
+  const fmtDate = new Date(date + 'T00:00:00+07:00').toLocaleDateString('vi-VN');
+  if(!confirm(`Xóa toàn bộ dữ liệu ngày ${fmtDate}?\nHành động này không thể hoàn tác!`)) return;
+  deleteDay(date);
+}
+
+// Xác nhận xóa tất cả
+function confirmDeleteAll() {
+  if(!confirm('Xóa TOÀN BỘ dữ liệu tất cả các ngày?\nHành động này KHÔNG thể hoàn tác!')) return;
+  deleteDay('all');
+}
+
+// Thực hiện xóa
+async function deleteDay(date) {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  try {
+    const res = await fetch(`${url}/api/webhook?date=${date}`, { method: 'DELETE' });
+    const data = await res.json();
+    if(data.ok) {
+      toast(date === 'all' ? '✓ Đã xóa toàn bộ dữ liệu!' : `✓ Đã xóa dữ liệu ngày ${date}`);
+      // Nếu xóa ngày hôm nay → clear log hiện tại
+      const today = new Date(Date.now() + 7*60*60*1000).toISOString().slice(0,10);
+      if(date === 'all' || date === today) {
+        allTransactions = [];
+        logs = [];
+        lastTime = Date.now();
+        renderLog();
+        renderStats();
+      }
+      // Tải lại danh sách
+      setTimeout(() => loadDayList(), 500);
+    } else {
+      toast('⚠ Xóa thất bại!');
+    }
+  } catch(e) {
+    toast('⚠ Lỗi kết nối server!');
+  }
+}
+
 </script>
 </body>
 </html>
