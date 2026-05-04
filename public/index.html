@@ -774,9 +774,12 @@ function processMessage(text) {
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── SPEAK — ResponsiveVoice giọng nữ tiếng Việt ──
+// ── SPEAK — Ưu tiên: ResponsiveVoice → Google TTS → SpeechSynthesis ──
+let _audioEl = null; // audio element dùng lại cho Google TTS
+
 function speak(text) {
   const vol = parseFloat(document.getElementById('vol').value);
+  // Ưu tiên 1: ResponsiveVoice (giọng nữ tiếng Việt online)
   if(window.responsiveVoice && responsiveVoice.voiceSupport()) {
     responsiveVoice.cancel();
     responsiveVoice.speak(text, 'Vietnamese Female', {
@@ -784,13 +787,66 @@ function speak(text) {
       volume: vol,
       onstart: () => setSpeaking(true),
       onend:   () => setSpeaking(false),
-      onerror: () => { setSpeaking(false); speakFallback(text); }
+      onerror: () => { setSpeaking(false); speakGoogleTTS(text); }
     });
   } else {
-    speakFallback(text);
+    speakGoogleTTS(text);
   }
 }
 
+// Ưu tiên 2: Google Translate TTS — miễn phí, giọng Việt chuẩn, dùng Internet
+function speakGoogleTTS(text) {
+  try {
+    setSpeaking(true);
+    const vol = parseFloat(document.getElementById('vol').value);
+    // Google Translate TTS — giới hạn ~200 ký tự mỗi request, tách câu nếu dài
+    const chunks = splitTextChunks(text, 180);
+    playChunks(chunks, 0, vol);
+  } catch(e) {
+    setSpeaking(false);
+    speakFallback(text); // fallback cuối: speechSynthesis
+  }
+}
+
+function splitTextChunks(text, maxLen) {
+  if(text.length <= maxLen) return [text];
+  const chunks = [];
+  // Tách theo dấu câu
+  const sentences = text.split(/(?<=[.!?,])\s+/);
+  let current = '';
+  for(const s of sentences) {
+    if((current + ' ' + s).trim().length <= maxLen) {
+      current = (current + ' ' + s).trim();
+    } else {
+      if(current) chunks.push(current);
+      current = s;
+    }
+  }
+  if(current) chunks.push(current);
+  return chunks.length ? chunks : [text.slice(0, maxLen)];
+}
+
+function playChunks(chunks, idx, vol) {
+  if(idx >= chunks.length) { setSpeaking(false); return; }
+  const chunk = encodeURIComponent(chunks[idx]);
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${chunk}`;
+  if(_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
+  _audioEl = new Audio(url);
+  _audioEl.volume = isNaN(vol) ? 1 : Math.min(1, Math.max(0, vol));
+  _audioEl.playbackRate = rate || 1;
+  _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
+  _audioEl.onerror = () => {
+    // Google TTS thất bại → thử speechSynthesis
+    setSpeaking(false);
+    speakFallback(chunks.join(' '));
+  };
+  _audioEl.play().catch(() => {
+    setSpeaking(false);
+    speakFallback(chunks.join(' '));
+  });
+}
+
+// Ưu tiên 3: SpeechSynthesis của trình duyệt (fallback cuối)
 function speakFallback(text) {
   if(!window.speechSynthesis) { setSpeaking(false); return; }
   window.speechSynthesis.cancel();
