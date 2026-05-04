@@ -1,8 +1,8 @@
 // api/webhook.js — Vercel Serverless Function
 // Telegram → lưu Upstash → client poll timestamp 3s → chỉ lấy tin khi có mới
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const UPSTASH_URL = process.env.UPSTASH_REDIS_KV_REST_API_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_KV_REST_API_TOKEN;
 const MSG_KEY = 'bank_messages';
 const TS_KEY  = 'bank_last_ts';
 const MAX_MSGS = 100;
