@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "functions": { "api/webhook.js": { "maxDuration": 10 } },
+  "functions": {
+    "api/webhook.js": { "maxDuration": 10 },
+    "api/tts.js": { "maxDuration": 10 }
+  },
   "routes": [
     { "src": "/api/webhook", "dest": "/api/webhook.js" },
+    { "src": "/api/tts", "dest": "/api/tts.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
