@@ -764,26 +764,52 @@ function processMessage(text) {
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── AUDIO UNLOCK — Chrome chặn autoplay nếu chưa có user gesture ──
-let _audioUnlocked = false;
-function unlockAudio() {
-  if(_audioUnlocked) return;
-  // Phát file rỗng để "unlock" audio context
-  const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-  silentAudio.play().then(() => {
-    _audioUnlocked = true;
-    console.log('✓ Audio unlocked');
-  }).catch(() => {});
+// ── AUDIO ENGINE — Dùng Web Audio API để bypass autoplay policy ──
+// AudioContext không bị Chrome chặn như HTMLAudioElement
+let _actx = null;
+let _audioEl = null; // fallback
+
+
+
+function getAudioContext() {
+  if(!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  if(_actx.state === 'suspended') _actx.resume();
+  return _actx;
 }
-// Unlock ngay khi người dùng chạm/click lần đầu
-document.addEventListener('click', unlockAudio, { once: true });
-document.addEventListener('touchstart', unlockAudio, { once: true });
-let _audioEl = null;
+
+// Phát audio qua Web Audio API (không bị autoplay block)
+async function playAudioBuffer(url, vol, rate, onEnded) {
+  try {
+    const actx = getAudioContext();
+    const resp = await fetch(url);
+    const arrayBuf = await resp.arrayBuffer();
+    const audioBuf = await actx.decodeAudioData(arrayBuf);
+    const src = actx.createBufferSource();
+    const gainNode = actx.createGain();
+    src.buffer = audioBuf;
+    src.playbackRate.value = (typeof rate === 'number' && !isNaN(rate)) ? rate : 1;
+    gainNode.gain.value = Math.min(1, Math.max(0, isNaN(vol) ? 1 : vol));
+    src.connect(gainNode);
+    gainNode.connect(actx.destination);
+    src.onended = onEnded;
+    src.start(0);
+    return src;
+  } catch(e) {
+    console.warn('WebAudio error, fallback:', e);
+    // Fallback sang HTMLAudioElement
+    const a = new Audio(url);
+    a.volume = Math.min(1, Math.max(0, isNaN(vol) ? 1 : vol));
+    a.playbackRate = (typeof rate === 'number' && !isNaN(rate)) ? rate : 1;
+    a.onended = onEnded;
+    a.onerror = onEnded;
+    a.play().catch(onEnded);
+    _audioEl = a;
+  }
+}
 
 function speak(text) {
   const volEl = document.getElementById('vol');
   const vol = volEl ? parseFloat(volEl.value) : 1;
-  console.log('🔊 speak():', text.slice(0,40), '| vol:', vol, '| rate:', rate, '| unlocked:', _audioUnlocked);
   setSpeaking(true);
   const chunks = splitTextChunks(text, 180);
   playChunks(chunks, 0, isNaN(vol) ? 1 : vol);
@@ -807,21 +833,12 @@ function splitTextChunks(text, maxLen) {
   return chunks.length ? chunks : [text.slice(0, maxLen)];
 }
 
-// Phát từng đoạn lần lượt — gọi qua /api/tts proxy để tránh CORS
+// Phát từng đoạn lần lượt — dùng Web Audio API để bypass autoplay
 function playChunks(chunks, idx, vol) {
   if(idx >= chunks.length) { setSpeaking(false); return; }
-  // Gọi server proxy thay vì Google trực tiếp → không bị CORS
   const ttsUrl = `/api/tts?text=${encodeURIComponent(chunks[idx])}`;
-  if(_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
-  _audioEl = new Audio(ttsUrl);
-  _audioEl.volume = Math.min(1, Math.max(0, vol));
-  _audioEl.playbackRate = (typeof rate === 'number' && !isNaN(rate)) ? rate : 1;
-  _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
-  _audioEl.onerror = (e) => { console.warn('TTS error:', e); setSpeaking(false); };
-  _audioEl.play().catch(err => {
-    console.warn('Audio play blocked:', err);
-    setSpeaking(false);
-  });
+  const r = (typeof rate === 'number' && !isNaN(rate)) ? rate : 1;
+  playAudioBuffer(ttsUrl, vol, r, () => playChunks(chunks, idx + 1, vol));
 }
 
 function setSpeaking(on) {
