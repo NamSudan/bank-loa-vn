@@ -764,11 +764,26 @@ function processMessage(text) {
     new Notification(`💳 ${bank.name} — +${fmt(amt)}`, { body: speech });
 }
 
-// ── SPEAK — Google Translate TTS (giọng Việt chuẩn, online, miễn phí) ──
+// ── AUDIO UNLOCK — Chrome chặn autoplay nếu chưa có user gesture ──
+let _audioUnlocked = false;
+function unlockAudio() {
+  if(_audioUnlocked) return;
+  // Phát file rỗng để "unlock" audio context
+  const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+  silentAudio.play().then(() => {
+    _audioUnlocked = true;
+    console.log('✓ Audio unlocked');
+  }).catch(() => {});
+}
+// Unlock ngay khi người dùng chạm/click lần đầu
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('touchstart', unlockAudio, { once: true });
 let _audioEl = null;
 
 function speak(text) {
-  const vol = parseFloat(document.getElementById('vol').value);
+  const volEl = document.getElementById('vol');
+  const vol = volEl ? parseFloat(volEl.value) : 1;
+  console.log('🔊 speak():', text.slice(0,40), '| vol:', vol, '| rate:', rate, '| unlocked:', _audioUnlocked);
   setSpeaking(true);
   const chunks = splitTextChunks(text, 180);
   playChunks(chunks, 0, isNaN(vol) ? 1 : vol);
@@ -796,15 +811,17 @@ function splitTextChunks(text, maxLen) {
 function playChunks(chunks, idx, vol) {
   if(idx >= chunks.length) { setSpeaking(false); return; }
   // Gọi server proxy thay vì Google trực tiếp → không bị CORS
-  const url = `/api/tts?text=${encodeURIComponent(chunks[idx])}`;
-  const rate = parseFloat(document.getElementById('spd')?.value) || 1;
+  const ttsUrl = `/api/tts?text=${encodeURIComponent(chunks[idx])}`;
   if(_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
-  _audioEl = new Audio(url);
+  _audioEl = new Audio(ttsUrl);
   _audioEl.volume = Math.min(1, Math.max(0, vol));
-  _audioEl.playbackRate = isNaN(rate) ? 1 : rate;
+  _audioEl.playbackRate = (typeof rate === 'number' && !isNaN(rate)) ? rate : 1;
   _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
-  _audioEl.onerror = () => setSpeaking(false);
-  _audioEl.play().catch(() => setSpeaking(false));
+  _audioEl.onerror = (e) => { console.warn('TTS error:', e); setSpeaking(false); };
+  _audioEl.play().catch(err => {
+    console.warn('Audio play blocked:', err);
+    setSpeaking(false);
+  });
 }
 
 function setSpeaking(on) {
