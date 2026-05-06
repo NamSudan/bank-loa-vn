@@ -566,7 +566,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
   </div>
   <div style="padding:16px;">
     <!-- Tổng quan -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
       <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
         <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Tổng tiền</div>
         <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent);" id="stats-total">0đ</div>
@@ -574,10 +574,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
       <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
         <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Giao dịch</div>
         <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ink);" id="stats-count">0</div>
-      </div>
-      <div style="background:var(--cream);border:1px solid var(--rule);border-radius:6px;padding:12px;text-align:center;">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Trung bình</div>
-        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue);" id="stats-avg">0đ</div>
       </div>
     </div>
     <!-- Theo ngân hàng -->
@@ -602,7 +598,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
   </div>
   <div id="day-list-body" style="padding:14px;">
     <div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">
-      Bấm "Tải danh sách" để xem các ngày có dữ liệu
+      ⏳ Đang tải danh sách...
     </div>
   </div>
 </div>
@@ -700,6 +696,11 @@ window.onload = () => {
   });
   if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   renderStats();
+  // Tự động tải danh sách lịch sử nếu đã có Vercel URL
+  const savedUrl = localStorage.getItem('bankloa_vercel-url');
+  if(savedUrl) {
+    setTimeout(() => loadDayList(), 500);
+  }
 };
 
 function saveConfig() {
@@ -1000,6 +1001,12 @@ window.onload = () => {
   if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   renderStats();
 
+  // Tự động tải danh sách lịch sử nếu đã có Vercel URL
+  const savedVercelUrl = localStorage.getItem('bankloa_vercel-url');
+  if(savedVercelUrl) {
+    setTimeout(() => loadDayList(true), 600);
+  }
+
   // Tự động bắt đầu lắng nghe nếu đã cấu hình sẵn
   const token   = localStorage.getItem('bankloa_bot-token');
   const chatId  = localStorage.getItem('bankloa_chat-id');
@@ -1193,9 +1200,13 @@ function toast(msg) {
 }
 
 // ── QUẢN LÝ LỊCH SỬ THEO NGÀY ──
-async function loadDayList() {
+async function loadDayList(silent = false) {
   const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
-  if(!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+  if(!url) {
+    if(!silent) toast('⚠ Nhập Vercel URL trước!');
+    document.getElementById('day-list-body').innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">Nhập Vercel URL để xem danh sách</div>';
+    return;
+  }
   const el = document.getElementById('day-list-body');
   el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);">⏳ Đang tải...</div>';
   try {
@@ -1206,10 +1217,36 @@ async function loadDayList() {
       el.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding:16px 0;">Chưa có dữ liệu nào trong Redis</div>';
       return;
     }
-    renderDayList(days, url);
+    // Render khung trước, rồi fetch tổng tiền từng ngày song song
+    renderDayList(days, {});
+    fetchDayTotals(days, url);
   } catch(e) {
     el.innerHTML = '<div style="font-size:12px;color:var(--red);text-align:center;padding:16px 0;">⚠ Lỗi kết nối server</div>';
   }
+}
+
+// Fetch tổng tiền từng ngày song song rồi điền vào thẻ
+async function fetchDayTotals(days, url) {
+  const results = await Promise.allSettled(
+    days.map(d => fetch(`${url}/api/webhook?date=${d}`).then(r => r.json()).then(data => ({ date: d, messages: data.messages || [] })))
+  );
+  results.forEach(r => {
+    if(r.status !== 'fulfilled') return;
+    const { date, messages } = r.value;
+    let total = 0, count = 0;
+    messages.forEach(m => {
+      const bank = detectBank(m.text);
+      const amt = extractAmt(m.text, bank);
+      if(amt > 0) { total += amt; count++; }
+    });
+    const el = document.getElementById('day-total-' + date);
+    if(el) {
+      const fmtFull = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+      el.innerHTML = count > 0
+        ? `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);">${fmtFull(total)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px;">(${count} GD)</span>`
+        : `<span style="font-size:11px;color:var(--muted);">—</span>`;
+    }
+  });
 }
 
 function renderDayList(days) {
@@ -1224,14 +1261,21 @@ function renderDayList(days) {
     <div style="display:flex;flex-direction:column;gap:6px;">
       ${days.map(d=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--paper);border:1px solid ${d===today?'var(--accent)':'var(--rule)'};border-radius:3px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${d===today?'<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;">HÔM NAY</span>':''}
-            <span style="font-size:13px;font-weight:600;">${fmtDate(d)}</span>
-            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            ${d===today?'<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;white-space:nowrap;">HÔM NAY</span>':''}
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+              <span style="font-size:13px;font-weight:600;white-space:nowrap;">${fmtDate(d)}</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d}</span>
+            </div>
           </div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
-            <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div id="day-total-${d}" style="text-align:right;min-width:80px;">
+              <span style="font-size:11px;color:var(--muted);">⏳</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
+              <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
+            </div>
           </div>
         </div>`).join('')}
     </div>`;
