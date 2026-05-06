@@ -689,19 +689,7 @@ function initTestGrid() {
 initTestGrid();
 
 // ── LOAD CONFIG ──
-window.onload = () => {
-  ['vercel-url','bot-token','chat-id'].forEach(k=>{
-    const v = localStorage.getItem('bankloa_'+k);
-    if(v) document.getElementById(k).value = v;
-  });
-  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
-  renderStats();
-  // Tự động tải danh sách lịch sử nếu đã có Vercel URL
-  const savedUrl = localStorage.getItem('bankloa_vercel-url');
-  if(savedUrl) {
-    setTimeout(() => loadDayList(), 500);
-  }
-};
+// window.onload defined below (single definition)
 
 function saveConfig() {
   ['vercel-url','bot-token','chat-id'].forEach(k=>{
@@ -809,10 +797,11 @@ function playChunks(chunks, idx, vol) {
   if(idx >= chunks.length) { setSpeaking(false); return; }
   // Gọi server proxy thay vì Google trực tiếp → không bị CORS
   const url = `/api/tts?text=${encodeURIComponent(chunks[idx])}`;
+  const rate = parseFloat(document.getElementById('spd')?.value) || 1;
   if(_audioEl) { _audioEl.pause(); _audioEl.src = ''; }
   _audioEl = new Audio(url);
   _audioEl.volume = Math.min(1, Math.max(0, vol));
-  _audioEl.playbackRate = rate || 1;
+  _audioEl.playbackRate = isNaN(rate) ? 1 : rate;
   _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
   _audioEl.onerror = () => setSpeaking(false);
   _audioEl.play().catch(() => setSpeaking(false));
@@ -1095,12 +1084,13 @@ function renderStats() {
 
   const total = stats.reduce((s,x)=>s+x.amt, 0);
   const count = stats.length;
-  const avg = count ? Math.round(total/count) : 0;
 
-  document.getElementById('stats-date').textContent = new Date().toLocaleDateString('vi-VN');
-  document.getElementById('stats-total').textContent = fmtFull(total);
-  document.getElementById('stats-count').textContent = count;
-  document.getElementById('stats-avg').textContent = fmtFull(avg);
+  const dateEl = document.getElementById('stats-date');
+  const totalEl = document.getElementById('stats-total');
+  const countEl = document.getElementById('stats-count');
+  if(dateEl) dateEl.textContent = new Date().toLocaleDateString('vi-VN');
+  if(totalEl) totalEl.textContent = fmtFull(total);
+  if(countEl) countEl.textContent = count;
 
   // Theo từng ngân hàng
   const byBank = {};
