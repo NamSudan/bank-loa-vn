@@ -766,11 +766,8 @@ function processMessage(text) {
 
 // ── SPEAK ──
 let _audioEl = null;
-let _audioUnlocked = false;
-let _pendingSpeak = null;
 
 function speak(text) {
-  if(!_audioUnlocked) { _pendingSpeak = text; return; }
   const volEl = document.getElementById('vol');
   const vol = volEl ? parseFloat(volEl.value) : 1;
   setSpeaking(true);
@@ -805,8 +802,11 @@ function playChunks(chunks, idx, vol) {
   _audioEl.volume = Math.min(1, Math.max(0, vol));
   _audioEl.playbackRate = rate || 1;
   _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
-  _audioEl.onerror = () => setSpeaking(false);
-  _audioEl.play().catch(() => setSpeaking(false));
+  _audioEl.onerror = () => playChunks(chunks, idx + 1, vol); // bỏ qua đoạn lỗi, phát tiếp
+  _audioEl.play().catch(() => {
+    // Audio bị chặn → vẫn giữ animation, tự tắt sau 3s
+    setTimeout(() => setSpeaking(false), 3000);
+  });
 }
 
 function setSpeaking(on) {
@@ -854,7 +854,6 @@ async function start() {
   const token = document.getElementById('bot-token').value.trim();
   if(!url || !token) { toast('⚠ Nhập Vercel URL và Token trước!'); return; }
   saveConfig();
-  _audioUnlocked = true; // bấm Start = user gesture → audio được phép phát
   lastTs = '0';
   setStatus('wait','Đang kết nối...');
   document.getElementById('btn-start').style.display = 'none';
@@ -1005,9 +1004,11 @@ window.onload = () => {
   const chanId  = localStorage.getItem('bankloa_channel-id');
   if(token && chatId) {
     setTimeout(() => {
-      _audioUnlocked = true; // Chrome đã nhớ domain → audio tự động được phép
-      toast('🔄 Đang tự động kết nối...');
       start();
+      // Lần đầu dùng app: nhắc bấm Thử loa 1 lần để Chrome nhớ quyền audio
+      if(!localStorage.getItem('bankloa_audio_ok')) {
+        setTimeout(() => toast('🔊 Bấm "Thử loa" 1 lần để kích hoạt âm thanh!'), 1500);
+      }
     }, 800);
   }
 };
@@ -1021,7 +1022,10 @@ function saveConfig() {
   });
 }
 
-function testVoice() { speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.'); }
+function testVoice() {
+  localStorage.setItem('bankloa_audio_ok', '1');
+  speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.');
+}
 
 function testSMS(text) { processMessage(text); }
 
