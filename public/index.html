@@ -1005,10 +1005,6 @@ window.onload = () => {
   if(token && chatId) {
     setTimeout(() => {
       start();
-      // Lần đầu dùng app: nhắc bấm Thử loa 1 lần để Chrome nhớ quyền audio
-      if(!localStorage.getItem('bankloa_audio_ok')) {
-        setTimeout(() => toast('🔊 Bấm "Thử loa" 1 lần để kích hoạt âm thanh!'), 1500);
-      }
     }, 800);
   }
 };
@@ -1022,10 +1018,7 @@ function saveConfig() {
   });
 }
 
-function testVoice() {
-  localStorage.setItem('bankloa_audio_ok', '1');
-  speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.');
-}
+function testVoice() { speak('Xin chào! Loa ngân hàng đang hoạt động. Vietcombank thông báo tài khoản vừa nhận ba trăm năm mươi nghìn đồng.'); }
 
 function testSMS(text) { processMessage(text); }
 
