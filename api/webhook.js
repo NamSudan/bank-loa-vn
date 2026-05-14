@@ -29,6 +29,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Ngăn Vercel CDN cache response — bắt buộc để poll realtime hoạt động đúng
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Surrogate-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   // ── POST: Telegram webhook → lưu tin vào key ngày hôm nay ──
