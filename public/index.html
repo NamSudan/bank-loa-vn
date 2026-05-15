@@ -521,6 +521,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
       </div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="registerWebhook()">🔗 Đăng ký Webhook</button>
+        <button class="btn btn-ghost" onclick="checkWebhook()">🔍 Kiểm tra</button>
         <button class="btn btn-ghost" id="btn-push" onclick="togglePush()">🔔 Bật thông báo</button>
         <button class="btn btn-ghost" onclick="testVoice()">🔊 Thử loa</button>
       </div>
@@ -996,6 +997,25 @@ async function pollServer() {
     }
     // Timestamp giống → không có giao dịch mới → tiết kiệm command ✅
   } catch(e) { setStatus('off','Mất kết nối...'); }
+}
+
+// Kiểm tra trạng thái Webhook hiện tại
+async function checkWebhook() {
+  const token = document.getElementById('bot-token').value.trim();
+  if (!token) { toast('⚠ Nhập Bot Token trước!'); return; }
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const d = await r.json();
+    if (!d.ok) { toast('✗ Token không hợp lệ'); return; }
+    const w = d.result;
+    const urlShort = w.url ? '✓ Đã đăng ký' : '✗ Chưa đăng ký';
+    const pending = w.pending_update_count || 0;
+    const errMsg = w.last_error_message || '';
+    const allowed = (w.allowed_updates||[]).join(', ') || 'tất cả';
+    let msg = `Webhook: ${urlShort}\nPending: ${pending} tin\nAllowed: ${allowed}`;
+    if (errMsg) msg += `\n⚠ Lỗi: ${errMsg}`;
+    alert(msg);
+  } catch(e) { toast('✗ Không kết nối được!'); }
 }
 
 // Đăng ký Webhook Telegram → Vercel
