@@ -1138,18 +1138,20 @@ function renderStats() {
     const sorted = Object.entries(byBank).sort((a,b)=>b[1].total-a[1].total);
     bankEl.innerHTML = sorted.map(([k,v])=>{
       const pct = total ? Math.round(v.total/total*100) : 0;
-      return `<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px;">
-          <span style="font-weight:700;display:flex;align-items:center;gap:6px;">
-            <span style="width:10px;height:10px;border-radius:50%;background:${v.color||'var(--ink)'};display:inline-block;"></span>
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
+          <span style="font-weight:600;display:flex;align-items:center;gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${v.color||'var(--accent)'};display:inline-block;flex-shrink:0;"></span>
             ${v.name}
-            <span style="font-size:10px;color:var(--muted);font-weight:400;">${v.count} GD</span>
+            <span style="font-size:10px;color:var(--text-3);font-weight:400;">${v.count} GD</span>
           </span>
-          <span style="font-family:var(--mono);color:var(--accent);font-weight:700;">${fmtFull(v.total)}</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:10px;color:var(--text-3);font-family:var(--mono);">${pct}%</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);">${fmtFull(v.total)}</span>
+          </span>
         </div>
-        <div style="background:var(--rule);border-radius:2px;height:5px;position:relative;">
-          <div style="background:${v.color||'var(--accent)'};height:5px;border-radius:2px;width:${pct}%;transition:width .6s;"></div>
-          <span style="position:absolute;right:0;top:-14px;font-size:9px;color:var(--muted);font-family:var(--mono);">${pct}%</span>
+        <div style="background:var(--border);border-radius:4px;height:5px;">
+          <div style="background:${v.color||'var(--accent)'};height:5px;border-radius:4px;width:${pct}%;transition:width .6s ease;"></div>
         </div>
       </div>`;
     }).join('');
