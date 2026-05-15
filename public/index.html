@@ -864,6 +864,10 @@ async function start() {
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-stop').style.display = 'inline-flex';
 
+  // Tự động đăng ký webhook mỗi lần start (fire-and-forget, không block)
+  fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(url+'/api/webhook')}`)
+    .catch(() => {});
+
   // Bước 1: Load toàn bộ lịch sử hôm nay từ Redis trước
   await loadAllHistory(url);
 
