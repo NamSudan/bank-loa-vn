@@ -589,11 +589,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
   <div class="cbar-actions">
     <button class="btn btn-solid btn-sm" id="btn-start" onclick="start()">▶ Bắt đầu</button>
     <button class="btn btn-stop btn-sm" id="btn-stop" onclick="stop()" style="display:none;">⏹ Dừng</button>
-    <label class="tgl" title="Bật/tắt loa">
-      <input type="checkbox" id="v-on" checked>
+    <label class="tgl" title="Bật/tắt giọng đọc">
+      <input type="checkbox" id="v-on" checked
+        onchange="toast(this.checked ? '🔊 Giọng đọc bật' : '🔇 Giọng đọc tắt')">
       <span class="sl"></span>
     </label>
-    <span style="font-size:15px;line-height:1;">🔊</span>
+    <span style="font-size:15px;line-height:1;" title="Bật/tắt giọng đọc">🔊</span>
   </div>
 </div>
 
@@ -1344,7 +1345,7 @@ async function fetchDayTotals(days, url) {
       const fmtFull = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
       el.innerHTML = count > 0
         ? `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);">${fmtFull(total)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px;">(${count} GD)</span>`
-        : `<span style="font-size:11px;color:var(--muted);">—</span>`;
+        : `<span style="font-size:10px;color:var(--muted);">Không có giao dịch</span>`;
     }
   });
 }
@@ -1362,20 +1363,15 @@ function renderDayList(days) {
       ${days.map(d=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--paper);border:1px solid ${d===today?'var(--accent)':'var(--rule)'};border-radius:3px;">
           <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-            ${d===today?'<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;white-space:nowrap;">HÔM NAY</span>':''}
-            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+            ${d===today?'<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:2px;white-space:nowrap;flex-shrink:0;">HÔM NAY</span>':''}
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0;">
               <span style="font-size:13px;font-weight:600;white-space:nowrap;">${fmtDate(d)}</span>
-              <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d}</span>
+              <div id="day-total-${d}"><span style="font-size:11px;color:var(--muted);">⏳</span></div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div id="day-total-${d}" style="text-align:right;min-width:80px;">
-              <span style="font-size:11px;color:var(--muted);">⏳</span>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
-              <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
-            </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;" onclick="viewDayHistory('${d}')">👁 Xem</button>
+            <button class="btn btn-stop" style="font-size:10px;padding:5px 10px;" onclick="confirmDeleteDay('${d}')">🗑 Xóa</button>
           </div>
         </div>`).join('')}
     </div>`;
