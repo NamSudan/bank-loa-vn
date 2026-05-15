@@ -2,8 +2,11 @@
 // Lưu theo từng ngày: bank_msgs:YYYY-MM-DD
 // Hỗ trợ: nhận tin, poll timestamp, lấy tin theo ngày, xóa theo ngày, liệt kê ngày
 
+import webpush from 'web-push';
+
 const UPSTASH_URL   = process.env.UPSTASH_REDIS_KV_REST_API_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_KV_REST_API_TOKEN;
+const PUSH_SUBS_KEY = 'push_subscriptions';
 const MAX_PER_DAY   = 500; // tối đa 500 giao dịch/ngày
 const TS_KEY        = 'bank_last_ts';
 const DAYS_SET_KEY  = 'bank_days'; // Set lưu danh sách các ngày đã có dữ liệu
@@ -13,6 +16,29 @@ async function redisCmd(...args) {
     headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
   });
   return res.json();
+}
+
+// Gửi Web Push đến tất cả subscriptions (fire-and-forget, không block response)
+async function sendPushToAll(payload) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL || 'mailto:admin@bank-loa-vn.app',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+    const subsResult = await redisCmd('SMEMBERS', PUSH_SUBS_KEY);
+    const subs = subsResult.result || [];
+    await Promise.allSettled(subs.map(async subStr => {
+      try {
+        await webpush.sendNotification(JSON.parse(subStr), JSON.stringify(payload));
+      } catch(e) {
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          await redisCmd('SREM', PUSH_SUBS_KEY, subStr);
+        }
+      }
+    }));
+  } catch(e) { /* không được làm hỏng webhook nếu push lỗi */ }
 }
 
 // Key theo ngày: bank_msgs:2026-05-04
@@ -57,9 +83,13 @@ export default async function handler(req, res) {
       // Cập nhật timestamp để client biết có tin mới
       await redisCmd('SET', TS_KEY, String(now));
 
+      // Gửi Web Push (không await — không block response về Telegram)
+      sendPushToAll({ text, time: now });
+
       return res.status(200).json({ ok: true });
     } catch(e) {
-      return res.status(200).json({ ok: true });
+      // Trả 500 để Telegram tự retry — không được trả 200 khi Redis lỗi
+      return res.status(500).json({ ok: false, error: e.message });
     }
   }
 

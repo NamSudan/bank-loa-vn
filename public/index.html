@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loa Ngân Hàng VN</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔊</text></svg>">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔊</text></svg>">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bank Loa">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE">
 // ── QUẢN LÝ LỊCH SỬ THEO NGÀY ──
 async function loadDayList() {
@@ -510,6 +514,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; h
       <button class="btn btn-solid" id="btn-start" onclick="start()">▶ Bắt đầu lắng nghe</button>
       <button class="btn btn-stop" id="btn-stop" onclick="stop()" style="display:none;">⏹ Dừng</button>
       <button class="btn btn-ghost" onclick="registerWebhook()">🔗 Đăng ký Webhook</button>
+      <button class="btn btn-ghost" id="btn-push" onclick="togglePush()">🔔 Bật thông báo</button>
       <button class="btn btn-ghost" onclick="testVoice()">🔊 Thử loa</button>
     </div>
   </div>
@@ -861,6 +866,9 @@ async function start() {
 
   // Bước 1: Load toàn bộ lịch sử hôm nay từ Redis trước
   await loadAllHistory(url);
+
+  // Bước 1b: Sync tin bị miss (fire-and-forget, toast nếu có tin mới)
+  syncMissed(url, token);
 
   // Bước 2: Bắt đầu poll tin mới (chỉ lấy tin SAU thời điểm load xong)
   lastTime = Date.now();
@@ -1319,6 +1327,106 @@ async function deleteDay(date) {
     } else { toast('⚠ Xóa thất bại!'); }
   } catch(e) { toast('⚠ Lỗi kết nối server!'); }
 }
+
+// ── PWA / SERVICE WORKER / PUSH NOTIFICATIONS ──
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+let swRegistration = null;
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('/sw.js');
+    updatePushButton();
+  } catch(e) { /* SW không support */ }
+}
+
+async function updatePushButton() {
+  const btn = document.getElementById('btn-push');
+  if (!btn || !('PushManager' in window)) {
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  const reg = swRegistration || await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  btn.textContent = sub ? '🔕 Tắt thông báo' : '🔔 Bật thông báo';
+}
+
+async function togglePush() {
+  if (!('PushManager' in window)) {
+    toast('⚠ Cần Add to Home Screen trên iOS 16.4+ để dùng tính năng này');
+    return;
+  }
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  if (!url) { toast('⚠ Nhập Vercel URL trước!'); return; }
+
+  const reg = swRegistration || await navigator.serviceWorker.ready;
+  const existingSub = await reg.pushManager.getSubscription();
+
+  if (existingSub) {
+    await existingSub.unsubscribe();
+    await fetch(`${url}/api/push-subscribe`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: existingSub.endpoint })
+    });
+    toast('✓ Đã tắt thông báo nền');
+    updatePushButton();
+    return;
+  }
+
+  const keyRes = await fetch(`${url}/api/push-subscribe`).then(r => r.json()).catch(() => ({}));
+  if (!keyRes.vapidPublicKey) {
+    toast('⚠ Server chưa cấu hình VAPID keys');
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    toast('⚠ Cần cho phép thông báo trong Cài đặt > Safari > Thông báo');
+    return;
+  }
+
+  try {
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array(keyRes.vapidPublicKey)
+    });
+    await fetch(`${url}/api/push-subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub })
+    });
+    toast('✓ Đã bật thông báo nền! Nhận tin kể cả khi khoá màn hình.');
+    updatePushButton();
+  } catch(e) {
+    toast('⚠ Không đăng ký được: ' + e.message);
+  }
+}
+
+// Sync giao dịch bị miss khi webhook tạm thời down
+async function syncMissed(url, token) {
+  try {
+    const res = await fetch(`${url}/api/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, webhookUrl: `${url}/api/webhook` })
+    });
+    const data = await res.json();
+    if (data.ok && data.synced > 0) {
+      toast(`↩ Phục hồi ${data.synced} giao dịch bị miss!`);
+      await loadAllHistory(url);
+    }
+  } catch(e) { /* silent */ }
+}
+
+registerSW();
 </script>
 </body>
 </html>
