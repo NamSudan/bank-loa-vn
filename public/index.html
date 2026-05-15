@@ -459,35 +459,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
   .hero-cards { gap:8px; }
 }
 </style>
-
-/* ── ACCORDION ── */
-.acc-section { border:1px solid var(--rule); border-radius:4px; background:var(--cream); margin-bottom:12px; overflow:hidden; }
-.acc-hdr { padding:11px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(0,0,0,.02); transition:background .15s; }
-.acc-hdr:hover { background:rgba(0,0,0,.04); }
-.acc-title { font-size:10px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:8px; }
-.acc-section.open .acc-title { color:var(--ink); }
-.acc-chevron { transition:transform .25s ease; font-size:11px; color:var(--muted); }
-.acc-section.open .acc-chevron { transform:rotate(180deg); }
-.acc-body { max-height:0; overflow:hidden; transition:max-height .3s cubic-bezier(0.4,0,0.2,1); }
-.acc-section.open .acc-body { max-height:900px; }
-.acc-section.acc-history.open .acc-body { max-height:1400px; }
-.acc-inner { padding:16px; border-top:1px solid var(--rule); }
-
-/* ── CONTROL BAR ── */
-.control-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border:1px solid var(--rule); border-radius:4px; background:var(--cream); margin-bottom:14px; }
-.cbar-actions { display:flex; align-items:center; gap:8px; }
-.btn-sm { padding:6px 14px !important; font-size:10px !important; }
-
-/* ── STATS HERO ── */
-.stats-hero { border:1px solid var(--rule); border-top:3px solid var(--accent); border-radius:4px; background:var(--cream); margin-bottom:14px; }
-.stats-hero .sec-hdr { padding:14px 16px; background:rgba(26,71,42,.03); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--rule); }
-.stats-hero .sec-title { font-size:12px; letter-spacing:3px; color:var(--accent); }
-.hero-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
-.hero-stat-card { background:var(--paper); border:1px solid var(--rule); border-radius:4px; padding:18px 16px; text-align:center; }
-.hero-stat-label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
-.hero-stat-value { font-family:var(--mono); font-size:24px; font-weight:700; color:var(--accent); line-height:1; }
-.hero-stat-value.count-val { color:var(--ink); }
-</style>
 </head>
 <body>
 <div class="wrap">
