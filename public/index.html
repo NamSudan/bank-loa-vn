@@ -1447,8 +1447,9 @@ async function registerSW() {
 
 async function updatePushButton() {
   const btn = document.getElementById('btn-push');
-  if (!btn || !('PushManager' in window)) {
-    if (btn) btn.style.display = 'none';
+  if (!btn) return;
+  if (!('PushManager' in window)) {
+    btn.textContent = '🔔 Bật thông báo';
     return;
   }
   const reg = swRegistration || await navigator.serviceWorker.ready;
