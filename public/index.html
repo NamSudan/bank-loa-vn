@@ -476,6 +476,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
   transition: transform .3s cubic-bezier(0.4,0,0.2,1);
 }
 #sidebar.open { transform: translateX(0); }
+#sidebar .controls-grid { grid-template-columns: 1fr; }
 .sb-hdr {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 18px; border-bottom: 1px solid var(--border);
@@ -836,12 +837,27 @@ function processMessage(text) {
 // ── SPEAK ──
 let _audioEl = null;
 
+function getViVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  return window.speechSynthesis.getVoices().find(v => v.lang.startsWith('vi')) || null;
+}
+
 function speak(text) {
-  const volEl = document.getElementById('vol');
-  const vol = volEl ? parseFloat(volEl.value) : 1;
-  setSpeaking(true);
-  const chunks = splitTextChunks(text, 180);
-  playChunks(chunks, 0, isNaN(vol) ? 1 : vol);
+  const vol = isNaN(parseFloat(document.getElementById('vol')?.value)) ? 1
+              : parseFloat(document.getElementById('vol').value);
+  const viVoice = getViVoice();
+  if (viVoice) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.voice = viVoice; utter.lang = 'vi-VN';
+    utter.rate = rate || 1; utter.volume = Math.min(1, vol);
+    utter.onstart = () => setSpeaking(true);
+    utter.onend = utter.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(utter);
+  } else {
+    setSpeaking(true);
+    playChunks(splitTextChunks(text, 180), 0, vol);
+  }
 }
 
 // Tách câu dài thành nhiều đoạn ≤ maxLen ký tự
@@ -953,7 +969,13 @@ async function start() {
   // Bước 2: Bắt đầu poll tin mới (chỉ lấy tin SAU thời điểm load xong)
   lastTime = Date.now();
   pollServer();
-  polling = setInterval(pollServer, 3000);
+  polling = setInterval(pollServer, 1000);
+
+  // Warm-up Web Speech API từ user gesture để tránh iOS block auto-play
+  if ('speechSynthesis' in window) {
+    const w = new SpeechSynthesisUtterance(' '); w.volume = 0;
+    window.speechSynthesis.speak(w);
+  }
 }
 
 function stop() {
