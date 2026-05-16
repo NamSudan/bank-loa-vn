@@ -723,7 +723,7 @@ const SAMPLES = [
 let polling = null;
 let burstCount = 0;
 const BURST_INTERVAL = 1000;
-const IDLE_INTERVAL  = 5000;
+const IDLE_INTERVAL  = 30000;  // fallback; push trigger pollServer() ngay khi có giao dịch
 const BURST_STEPS    = 15;
 let rate = 1;
 let logs = [];
@@ -1565,6 +1565,17 @@ async function syncMissed(url, token) {
 }
 
 registerSW();
+
+// Khi Service Worker nhận push → postMessage đến tab → poll ngay, không cần đợi interval
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'NEW_TRANSACTION' && polling !== null) {
+      clearTimeout(polling);
+      burstCount = BURST_STEPS;
+      pollServer();
+    }
+  });
+}
 </script>
 </body>
 </html>

@@ -6,15 +6,21 @@ self.addEventListener('push', e => {
   const text = data.text || 'Giao dịch mới';
 
   e.waitUntil(
-    self.registration.showNotification('Bank Loa 🏦', {
-      body: text,
-      icon: '/icon-192.png',
-      badge: '/icon-72.png',
-      tag: 'bank-transaction',
-      renotify: true,
-      requireInteraction: false,
-      vibrate: [200, 100, 200],
-    })
+    Promise.all([
+      self.registration.showNotification('Bank Loa 🏦', {
+        body: text,
+        icon: '/icon-192.png',
+        badge: '/icon-72.png',
+        tag: 'bank-transaction',
+        renotify: true,
+        requireInteraction: false,
+        vibrate: [200, 100, 200],
+      }),
+      // Báo ngay cho tất cả tab đang mở → tab poll Redis 1 lần → loa kêu tức thì
+      clients.matchAll({ type: 'window', includeUncontrolled: false }).then(list => {
+        list.forEach(c => c.postMessage({ type: 'NEW_TRANSACTION', text: data.text, time: data.time }));
+      })
+    ])
   );
 });
 
