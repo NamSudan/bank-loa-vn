@@ -925,6 +925,8 @@ function loadMoreLog() {
 // ── STATE ──
 let lastTime = Date.now() - 5000;
 let lastTs = '0';
+const getToday = () => new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
+let currentDay = getToday();
 
 // ── START/STOP ──
 async function start() {
@@ -933,6 +935,7 @@ async function start() {
   if(!url || !token) { toast('⚠ Nhập Vercel URL và Token trước!'); return; }
   saveConfig();
   lastTs = '0';
+  currentDay = getToday();
   setStatus('wait','Đang kết nối...');
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-stop').style.display = 'inline-flex';
@@ -1029,6 +1032,20 @@ async function loadAllHistory(url) {
 // Poll timestamp 3s — chỉ lấy tin khi có giao dịch mới
 async function pollServer() {
   const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+
+  // Kiểm tra sang ngày mới (giờ VN)
+  const today = getToday();
+  if (today !== currentDay) {
+    currentDay = today;
+    lastTs = '0';
+    lastTime = Date.now() - 5000;
+    logs = []; allTransactions = [];
+    renderLog(); renderStats();
+    toast('🌅 Sang ngày mới — đã reset lịch sử giao dịch');
+    await loadAllHistory(url);
+    return;
+  }
+
   try {
     // Bước 1: Hỏi timestamp — 1 lệnh Redis siêu nhẹ
     const tsRes = await fetch(`${url}/api/webhook?type=ts`);
