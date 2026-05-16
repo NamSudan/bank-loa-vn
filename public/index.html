@@ -397,11 +397,10 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
 
 .tx-item {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px 1fr auto auto;
   gap: 12px;
   align-items: center;
   padding: 12px;
-  position: relative;
   border-radius: var(--r-sm);
   margin-bottom: 4px;
   transition: background .15s;
@@ -409,15 +408,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
 }
 .tx-item:hover { background: var(--surface-2); }
 .tx-del-btn {
-  position: absolute; top: 6px; right: 6px;
   background: none; border: none; cursor: pointer;
-  color: var(--text-3); font-size: 16px; line-height: 1;
-  opacity: 0; transition: opacity .15s;
-  padding: 2px 6px; border-radius: 4px;
+  color: var(--text-3); font-size: 18px; line-height: 1;
+  padding: 4px 8px; border-radius: 4px;
+  transition: color .15s, background .15s;
+  flex-shrink: 0;
 }
-.tx-del-btn:hover { color: #e53e3e; background: #fff5f5; }
-.tx-item:hover .tx-del-btn { opacity: 1; }
-@media (hover: none) { .tx-del-btn { opacity: 0.45; } }
+.tx-del-btn:hover, .tx-del-btn:active { color: #e53e3e; background: #fff5f5; }
 @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
 
 .tx-bank-icon {
@@ -943,7 +940,7 @@ function renderLog(reset=true) {
         <div class="tx-amt">+${fmt(l.amt)}đ</div>
         <div class="tx-time">${l.t}</div>
       </div>
-      <button class="tx-del-btn" onclick="deleteTx(${l.time})" title="Xoá giao dịch này">×</button>
+      <button class="tx-del-btn" onclick="confirmDeleteTx(${l.time},'${fmt(l.amt)}')" title="Xoá giao dịch này">×</button>
     </div>`).join('') +
     (remaining > 0 ? `<div style="text-align:center;padding:12px 8px;"><button class="btn btn-ghost" style="font-size:11px;width:100%;" onclick="loadMoreLog()">⬇ Xem thêm (còn ${remaining} giao dịch)</button></div>` : '');
   document.getElementById('log-cnt').textContent = logs.length + ' giao dịch';
@@ -1461,6 +1458,11 @@ function confirmDeleteDay(date) {
 function confirmDeleteAll() {
   if(!confirm('Xóa TOÀN BỘ dữ liệu tất cả các ngày?\nHành động này KHÔNG thể hoàn tác!')) return;
   deleteDay('all');
+}
+
+function confirmDeleteTx(time, amtFmt) {
+  if (!confirm(`Xoá giao dịch +${amtFmt}đ?\nHành động này không thể hoàn tác!`)) return;
+  deleteTx(time);
 }
 
 async function deleteTx(time) {
