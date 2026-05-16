@@ -152,6 +152,23 @@ export default async function handler(req, res) {
   // ── DELETE ?date=all — Xóa toàn bộ ──
   if (req.method === 'DELETE') {
     try {
+      // Xóa 1 giao dịch cụ thể theo timestamp
+      if (req.query.msgtime) {
+        const ts = req.query.msgtime;
+        const daysResult = await redisCmd('SMEMBERS', DAYS_SET_KEY);
+        const days = daysResult.result || [];
+        for (const d of days) {
+          const listResult = await redisCmd('LRANGE', dayKey(d), '0', '-1');
+          const entries = listResult.result || [];
+          const match = entries.find(e => { try { return JSON.parse(e).time == ts; } catch { return false; } });
+          if (match) {
+            await redisCmd('LREM', dayKey(d), '1', match);
+            return res.status(200).json({ ok: true });
+          }
+        }
+        return res.status(404).json({ ok: false, error: 'Not found' });
+      }
+
       const date = req.query.date;
       if (!date) return res.status(400).json({ ok: false, error: 'Missing date param' });
 

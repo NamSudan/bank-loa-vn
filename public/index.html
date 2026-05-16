@@ -401,12 +401,22 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
   gap: 12px;
   align-items: center;
   padding: 12px;
+  position: relative;
   border-radius: var(--r-sm);
   margin-bottom: 4px;
   transition: background .15s;
   animation: slideIn .2s ease;
 }
 .tx-item:hover { background: var(--surface-2); }
+.tx-del-btn {
+  position: absolute; top: 6px; right: 6px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 16px; line-height: 1;
+  opacity: 0; transition: opacity .15s;
+  padding: 2px 6px; border-radius: 4px;
+}
+.tx-del-btn:hover { color: #e53e3e; background: #fff5f5; }
+.tx-item:hover .tx-del-btn { opacity: 1; }
 @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
 
 .tx-bank-icon {
@@ -809,7 +819,7 @@ function buildSpeech(text, amt, bank) {
 }
 
 // ── PROCESS MESSAGE ──
-function processMessage(text) {
+function processMessage(text, time=Date.now()) {
   const bank = detectBank(text);
   const amt = extractAmt(text, bank);
   if(!amt) return;
@@ -825,7 +835,7 @@ function processMessage(text) {
   document.getElementById('ann-box').classList.add('show');
 
   // Add to log
-  addLog(amt, text, bank);
+  addLog(amt, text, bank, true, time);
 
   // Lưu thống kê
   saveStat(amt, bank, text);
@@ -904,12 +914,12 @@ function setSpeaking(on) {
 }
 
 // ── LOG ──
-function addLog(amt, raw, bank, shouldSpeak=true) {
+function addLog(amt, raw, bank, shouldSpeak=true, time=Date.now()) {
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
   // Tránh thêm trùng
   const exists = logs.some(l=>l.raw===raw && l.amt===amt);
   if(exists) return;
-  logs.unshift({ amt, raw, bank, t: new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+  logs.unshift({ amt, raw, bank, time, t: new Date(time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
   renderLog();
 }
 
@@ -932,6 +942,7 @@ function renderLog(reset=true) {
         <div class="tx-amt">+${fmt(l.amt)}đ</div>
         <div class="tx-time">${l.t}</div>
       </div>
+      <button class="tx-del-btn" onclick="deleteTx(${l.time})" title="Xoá giao dịch này">×</button>
     </div>`).join('') +
     (remaining > 0 ? `<div style="text-align:center;padding:12px 8px;"><button class="btn btn-ghost" style="font-size:11px;width:100%;" onclick="loadMoreLog()">⬇ Xem thêm (còn ${remaining} giao dịch)</button></div>` : '');
   document.getElementById('log-cnt').textContent = logs.length + ' giao dịch';
@@ -1078,7 +1089,7 @@ async function pollServer() {
         const sorted = [...msgData.messages].sort((a,b)=>a.time-b.time);
         sorted.forEach(m => {
           lastTime = Math.max(lastTime, m.time);
-          processMessage(m.text);
+          processMessage(m.text, m.time);
         });
         burstCount = BURST_STEPS;
       }
@@ -1211,7 +1222,7 @@ async function loadTodayFromTelegram(token, chatId) {
             date: today
           });
           // Thêm vào log UI (không phát loa)
-          addLog(amt, msg, bank, false);
+          addLog(amt, msg, bank, false, m.time);
         }
       }
       // Cập nhật lastUpdateId
@@ -1449,6 +1460,20 @@ function confirmDeleteDay(date) {
 function confirmDeleteAll() {
   if(!confirm('Xóa TOÀN BỘ dữ liệu tất cả các ngày?\nHành động này KHÔNG thể hoàn tác!')) return;
   deleteDay('all');
+}
+
+async function deleteTx(time) {
+  const url = document.getElementById('vercel-url').value.trim().replace(/\/$/,'');
+  try {
+    const res = await fetch(`${url}/api/webhook?msgtime=${time}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      logs = logs.filter(l => l.time !== time);
+      allTransactions = allTransactions.filter(t => t.t !== time);
+      renderLog(); renderStats();
+      toast('✓ Đã xoá giao dịch');
+    } else { toast('⚠ Xoá thất bại'); }
+  } catch(e) { toast('⚠ Lỗi kết nối!'); }
 }
 
 async function deleteDay(date) {
