@@ -964,65 +964,54 @@ function stop() {
   setSpeaking(false);
 }
 
-// Load toàn bộ lịch sử TẤT CẢ các ngày từ Redis (gọi khi bấm Bắt đầu)
+// Load lịch sử HÔM NAY từ Redis (gọi khi bấm Bắt đầu hoặc sang ngày mới)
 async function loadAllHistory(url) {
   try {
     setStatus('wait', 'Đang tải lịch sử...');
-    toast('⏳ Đang tải toàn bộ lịch sử...');
+    const today = getToday();
 
-    // Bước 1: Lấy danh sách tất cả các ngày có dữ liệu
-    const daysRes = await fetch(`${url}/api/webhook?type=days`);
-    const daysData = await daysRes.json();
-    const days = (daysData.days || []).sort(); // cũ → mới
+    allTransactions = [];
+    logs = [];
 
-    if(!days.length) {
-      toast('✓ Kết nối thành công! Chưa có giao dịch nào.');
+    const res = await fetch(`${url}/api/webhook?date=${today}`);
+    const data = await res.json();
+    const msgs = data.messages || [];
+
+    if(!msgs.length) {
+      toast('✓ Kết nối thành công! Chưa có giao dịch hôm nay.');
       setStatus('on','Đang lắng nghe');
+      renderLog(); renderStats();
       return;
     }
 
-    // Bước 2: Reset và load từng ngày một
-    allTransactions = [];
-    logs = [];
-    let totalLoaded = 0;
-
-    for(const date of days) {
-      try {
-        const res = await fetch(`${url}/api/webhook?date=${date}`);
-        const data = await res.json();
-        const msgs = data.messages || [];
-
-        msgs.forEach(m => {
-          const bank = detectBank(m.text);
-          const amt  = extractAmt(m.text, bank);
-          if(amt > 0 && !allTransactions.some(x => x.raw === m.text && x.amt === amt)) {
-            allTransactions.push({
-              amt, bank: bank.key, bankName: bank.name, color: bank.color,
-              raw: m.text, t: m.time, h: new Date(m.time).getHours(),
-              date: new Date(m.time).toDateString()
-            });
-            logs.push({
-              amt, raw: m.text, bank,
-              t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
-            });
-            totalLoaded++;
-          }
+    msgs.forEach(m => {
+      const bank = detectBank(m.text);
+      const amt  = extractAmt(m.text, bank);
+      if(amt > 0 && !allTransactions.some(x => x.raw === m.text && x.amt === amt)) {
+        allTransactions.push({
+          amt, bank: bank.key, bankName: bank.name, color: bank.color,
+          raw: m.text, t: m.time, h: new Date(m.time).getHours(),
+          date: new Date(m.time).toDateString()
         });
-      } catch(e) { /* bỏ qua ngày lỗi, tiếp tục ngày kế */ }
-    }
+        logs.push({
+          amt, raw: m.text, bank,
+          t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
+        });
+      }
+    });
 
-    // Sắp xếp: mới nhất lên đầu log, cũ nhất lên đầu allTransactions
+    // Mới nhất lên đầu log
     allTransactions.sort((a,b) => a.t - b.t);
     logs.sort((a,b) => {
       const ta = allTransactions.find(x=>x.raw===a.raw)?.t || 0;
       const tb = allTransactions.find(x=>x.raw===b.raw)?.t || 0;
-      return tb - ta; // mới nhất lên đầu
+      return tb - ta;
     });
 
     renderLog();
     renderStats();
     setStatus('on','Đang lắng nghe');
-    toast(`✓ Đã tải ${totalLoaded} giao dịch từ ${days.length} ngày!`);
+    toast(`✓ Đã tải ${logs.length} giao dịch hôm nay (${today})!`);
   } catch(e) {
     toast('⚠ Không tải được lịch sử — tiếp tục lắng nghe tin mới.');
     setStatus('on','Đang lắng nghe');
