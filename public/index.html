@@ -721,6 +721,10 @@ const SAMPLES = [
 
 // ── STATE ──
 let polling = null;
+let burstCount = 0;
+const BURST_INTERVAL = 1000;
+const IDLE_INTERVAL  = 5000;
+const BURST_STEPS    = 15;
 let rate = 1;
 let logs = [];
 let filterBankKey = 'all';
@@ -968,8 +972,9 @@ async function start() {
 
   // Bước 2: Bắt đầu poll tin mới (chỉ lấy tin SAU thời điểm load xong)
   lastTime = Date.now();
+  burstCount = 0;
+  polling = true; // sentinel — pollServer tự schedule bằng setTimeout
   pollServer();
-  polling = setInterval(pollServer, 1000);
 
   // Warm-up Web Speech API từ user gesture để tránh iOS block auto-play
   if ('speechSynthesis' in window) {
@@ -979,7 +984,7 @@ async function start() {
 }
 
 function stop() {
-  clearInterval(polling); polling = null;
+  clearTimeout(polling); polling = null;
   setStatus('off','Offline');
   document.getElementById('btn-start').style.display = 'inline-flex';
   document.getElementById('btn-stop').style.display = 'none';
@@ -1075,10 +1080,16 @@ async function pollServer() {
           lastTime = Math.max(lastTime, m.time);
           processMessage(m.text);
         });
+        burstCount = BURST_STEPS;
       }
     }
     // Timestamp giống → không có giao dịch mới → tiết kiệm command ✅
   } catch(e) { setStatus('off','Mất kết nối...'); }
+
+  if (polling !== null) {
+    const next = burstCount > 0 ? (burstCount--, BURST_INTERVAL) : IDLE_INTERVAL;
+    polling = setTimeout(pollServer, next);
+  }
 }
 
 // Kiểm tra trạng thái Webhook hiện tại
