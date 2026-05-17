@@ -1030,7 +1030,7 @@ async function loadAllHistory(url) {
           date: new Date(m.time).toDateString()
         });
         logs.push({
-          amt, raw: m.text, bank,
+          amt, raw: m.text, bank, time: m.time,
           t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
         });
       }
@@ -1220,7 +1220,7 @@ async function loadTodayFromTelegram(token, chatId) {
             date: today
           });
           // Thêm vào log UI (không phát loa)
-          addLog(amt, msg, bank, false, m.time);
+          addLog(amt, msg, bank, false, msgDate * 1000);
         }
       }
       // Cập nhật lastUpdateId
