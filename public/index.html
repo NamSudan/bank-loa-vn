@@ -793,12 +793,18 @@ function extractAmt(text, bank) {
   const pattern = bank?.amtPattern || GENERIC_AMT;
   const m = text.match(pattern);
   if(m) {
+    // Ký tự trước match là '-' → giao dịch trừ tiền, bỏ qua
+    const before = text.slice(Math.max(0, m.index - 2), m.index);
+    if(before.includes('-')) return 0;
     const raw = (m[1]||m[2]||'').replace(/[,\.]/g,'');
     const n = parseInt(raw);
     return n > 999 ? n : 0;
   }
   const g = text.match(GENERIC_AMT);
-  return g ? parseInt(g[1].replace(/[,\.]/g,'')) : 0;
+  if(!g) return 0;
+  const beforeG = text.slice(Math.max(0, g.index - 2), g.index);
+  if(beforeG.includes('-')) return 0;
+  return parseInt(g[1].replace(/[,\.]/g,'')) || 0;
 }
 
 // ── BUILD SPEECH ──
