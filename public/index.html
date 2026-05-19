@@ -505,6 +505,9 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
 </style>
 </head>
 <body>
+<div id="audio-unlock-bar" onclick="unlockAudio()" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);letter-spacing:.3px;">
+  🔊 Nhấp đây để bật âm thanh loa
+</div>
 
 <div id="sb-overlay" onclick="closeSidebar()"></div>
 <div id="sidebar">
@@ -533,6 +536,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
       <button class="btn btn-ghost" onclick="checkWebhook()">🔍 Kiểm tra</button>
       <button class="btn btn-ghost" id="btn-push" onclick="togglePush()">🔔 Bật thông báo</button>
       <button class="btn btn-ghost" onclick="testVoice()">🔊 Thử loa</button>
+      <button class="btn btn-ghost" id="btn-install-pwa" onclick="installPWA()" style="display:none;background:linear-gradient(135deg,#667eea22,#764ba222);border-color:#667eea66;color:#667eea;">📲 Cài app (autoplay vĩnh viễn)</button>
     </div>
   </div>
 
@@ -854,6 +858,52 @@ function processMessage(text, time=Date.now()) {
 
 // ── SPEAK ──
 let _audioEl = null;
+let _audioUnlocked = false;
+let _deferredInstallPrompt = null;
+
+function unlockAudio() {
+  if (_audioUnlocked) return;
+  _audioUnlocked = true;
+  const bar = document.getElementById('audio-unlock-bar');
+  if (bar) bar.style.display = 'none';
+  try { new (window.AudioContext || window.webkitAudioContext)().resume(); } catch(e) {}
+  if ('speechSynthesis' in window) {
+    const w = new SpeechSynthesisUtterance(' '); w.volume = 0;
+    window.speechSynthesis.speak(w);
+  }
+}
+
+// Unlock khi user tương tác lần đầu
+['click','touchstart','keydown'].forEach(ev =>
+  document.addEventListener(ev, unlockAudio, { once: true, capture: true })
+);
+
+// Resume SpeechSynthesis khi tab quay về foreground (fix Chrome bug)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && 'speechSynthesis' in window) window.speechSynthesis.resume();
+});
+
+// PWA install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  const btn = document.getElementById('btn-install-pwa');
+  if (btn) btn.style.display = '';
+});
+
+async function installPWA() {
+  if (!_deferredInstallPrompt) {
+    toast('App đã được cài hoặc trình duyệt không hỗ trợ!'); return;
+  }
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    toast('✓ Đã cài app! Mở từ desktop — loa sẽ tự bật mà không cần click.');
+    const btn = document.getElementById('btn-install-pwa');
+    if (btn) btn.style.display = 'none';
+  }
+  _deferredInstallPrompt = null;
+}
 
 function getViVoice() {
   if (!('speechSynthesis' in window)) return null;
@@ -869,9 +919,14 @@ function speak(text) {
     const utter = new SpeechSynthesisUtterance(text);
     utter.voice = viVoice; utter.lang = 'vi-VN';
     utter.rate = rate || 1; utter.volume = Math.min(1, vol);
-    utter.onstart = () => setSpeaking(true);
+    let synthStarted = false;
+    utter.onstart = () => { synthStarted = true; setSpeaking(true); };
     utter.onend = utter.onerror = () => setSpeaking(false);
     window.speechSynthesis.speak(utter);
+    // Fallback nếu SpeechSynthesis bị đơ sau 1.5s (Chrome bug)
+    setTimeout(() => {
+      if (!synthStarted) { window.speechSynthesis.cancel(); playChunks(splitTextChunks(text, 180), 0, vol); }
+    }, 1500);
   } else {
     setSpeaking(true);
     playChunks(splitTextChunks(text, 180), 0, vol);
@@ -907,7 +962,11 @@ function playChunks(chunks, idx, vol) {
   _audioEl.onended = () => playChunks(chunks, idx + 1, vol);
   _audioEl.onerror = () => playChunks(chunks, idx + 1, vol); // bỏ qua đoạn lỗi, phát tiếp
   _audioEl.play().catch(() => {
-    // Audio bị chặn → vẫn giữ animation, tự tắt sau 3s
+    // Audio bị chặn → hiện banner yêu cầu user click
+    if (!_audioUnlocked) {
+      const bar = document.getElementById('audio-unlock-bar');
+      if (bar) bar.style.display = 'block';
+    }
     setTimeout(() => setSpeaking(false), 3000);
   });
 }
