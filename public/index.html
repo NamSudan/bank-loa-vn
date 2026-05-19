@@ -69,7 +69,7 @@ async function viewDayHistory(date) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
-      if(amt > 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
+      if(amt !== 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
         allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
         logs.unshift({ amt, raw:m.text, bank, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
       }
@@ -429,7 +429,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
 .tx-name { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
 .tx-raw { font-size:11px; color:var(--text-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:340px; }
 .tx-time { font-family:var(--mono); font-size:10px; color:var(--text-3); margin-top:2px; }
-.tx-amt { font-family:var(--mono); font-size:15px; font-weight:700; color:var(--green); text-align:right; }
+.tx-amt { font-family:var(--mono); font-size:15px; font-weight:700; text-align:right; }
 
 /* ── TOAST ── */
 .toast {
@@ -793,18 +793,18 @@ function extractAmt(text, bank) {
   const pattern = bank?.amtPattern || GENERIC_AMT;
   const m = text.match(pattern);
   if(m) {
-    // Ký tự trước match là '-' → giao dịch trừ tiền, bỏ qua
-    const before = text.slice(Math.max(0, m.index - 2), m.index);
-    if(before.includes('-')) return 0;
     const raw = (m[1]||m[2]||'').replace(/[,\.]/g,'');
     const n = parseInt(raw);
-    return n > 999 ? n : 0;
+    if(n <= 999) return 0;
+    const before = text.slice(Math.max(0, m.index - 2), m.index);
+    return before.includes('-') ? -n : n;
   }
   const g = text.match(GENERIC_AMT);
   if(!g) return 0;
-  const beforeG = text.slice(Math.max(0, g.index - 2), g.index);
-  if(beforeG.includes('-')) return 0;
-  return parseInt(g[1].replace(/[,\.]/g,'')) || 0;
+  const n = parseInt(g[1].replace(/[,\.]/g,''));
+  if(n <= 999) return 0;
+  const before = text.slice(Math.max(0, g.index - 2), g.index);
+  return before.includes('-') ? -n : n;
 }
 
 // ── BUILD SPEECH ──
@@ -833,13 +833,13 @@ function processMessage(text, time=Date.now()) {
 
   // Update speaker UI
   document.getElementById('ann-bank').textContent = bank.name;
-  document.getElementById('ann-amount').textContent = '+' + fmt(amt);
-  document.getElementById('ann-amount').style.color = bank.color || 'var(--accent)';
+  document.getElementById('ann-amount').textContent = (amt > 0 ? '+' : '') + fmt(Math.abs(amt));
+  document.getElementById('ann-amount').style.color = amt > 0 ? (bank.color || 'var(--accent)') : '#e53e3e';
   document.getElementById('ann-text').textContent = speech;
   document.getElementById('ann-box').classList.add('show');
 
-  // Add to log
-  addLog(amt, text, bank, true, time);
+  // Add to log (không phát loa giao dịch trừ tiền)
+  addLog(amt, text, bank, amt > 0, time);
 
   // Lưu thống kê
   saveStat(amt, bank, text);
@@ -943,7 +943,7 @@ function renderLog(reset=true) {
         <div class="tx-raw">${l.raw}</div>
       </div>
       <div>
-        <div class="tx-amt">+${fmt(l.amt)}đ</div>
+        <div class="tx-amt" style="color:${l.amt>0?'var(--green)':'#e53e3e'}">${l.amt>0?'+':''}${fmt(l.amt)}đ</div>
         <div class="tx-time">${l.t}</div>
       </div>
       <button class="tx-del-btn" onclick="confirmDeleteTx(${l.time},'${fmt(l.amt)}')" title="Xoá giao dịch này">×</button>
@@ -1029,7 +1029,7 @@ async function loadAllHistory(url) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
-      if(amt > 0 && !allTransactions.some(x => x.raw === m.text && x.amt === amt)) {
+      if(amt !== 0 && !allTransactions.some(x => x.raw === m.text && x.amt === amt)) {
         allTransactions.push({
           amt, bank: bank.key, bankName: bank.name, color: bank.color,
           raw: m.text, t: m.time, h: new Date(m.time).getHours(),
@@ -1217,7 +1217,7 @@ async function loadTodayFromTelegram(token, chatId) {
       if(msg && fromId === chatId && msgDay === today) {
         const bank = detectBank(msg);
         const amt = extractAmt(msg, bank);
-        if(amt > 0) {
+        if(amt !== 0) {
           allTransactions.push({
             amt, bank: bank.key, bankName: bank.name,
             color: bank.color, raw: msg,
@@ -1248,7 +1248,7 @@ function renderStats() {
   const totalEl = document.getElementById('stats-total');
   const countEl = document.getElementById('stats-count');
   if(dateEl) dateEl.textContent = new Date().toLocaleDateString('vi-VN');
-  if(totalEl) totalEl.textContent = fmtFull(total);
+  if(totalEl) { totalEl.textContent = fmtFull(Math.abs(total)); totalEl.style.color = total < 0 ? '#e53e3e' : ''; }
   if(countEl) countEl.textContent = count;
 
   // Theo từng ngân hàng
@@ -1266,7 +1266,8 @@ function renderStats() {
     // Sắp xếp theo tổng tiền giảm dần
     const sorted = Object.entries(byBank).sort((a,b)=>b[1].total-a[1].total);
     bankEl.innerHTML = sorted.map(([k,v])=>{
-      const pct = total ? Math.round(v.total/total*100) : 0;
+      const absTotal = Math.abs(total) || 1;
+      const pct = Math.round(Math.abs(v.total)/absTotal*100);
       return `<div style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
           <span style="font-weight:600;display:flex;align-items:center;gap:6px;">
@@ -1276,7 +1277,7 @@ function renderStats() {
           </span>
           <span style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:10px;color:var(--text-3);font-family:var(--mono);">${pct}%</span>
-            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);">${fmtFull(v.total)}</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${v.total>=0?'var(--accent)':'#e53e3e'};">${v.total>=0?'':'-'}${fmtFull(Math.abs(v.total))}</span>
           </span>
         </div>
         <div style="background:var(--border);border-radius:4px;height:5px;">
@@ -1392,7 +1393,7 @@ async function fetchDayTotals(days, url) {
     messages.forEach(m => {
       const bank = detectBank(m.text);
       const amt = extractAmt(m.text, bank);
-      if(amt > 0) { total += amt; count++; }
+      if(amt !== 0) { total += amt; count++; }
     });
     const el = document.getElementById('day-total-' + date);
     if(el) {
@@ -1443,7 +1444,7 @@ async function viewDayHistory(date) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
-      if(amt > 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
+      if(amt !== 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
         allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
         logs.unshift({ amt, raw:m.text, bank, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
       }
