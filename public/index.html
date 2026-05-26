@@ -849,8 +849,19 @@ function extractSTK(text) {
 }
 
 // ── ACCOUNT LABEL HELPERS ──
-function loadAccountLabels() {
+async function loadAccountLabels() {
   try { accountLabels = JSON.parse(localStorage.getItem('bankloa_accounts') || '{}'); } catch(e) { accountLabels = {}; }
+  const url = localStorage.getItem('bankloa_vercel-url');
+  if(!url) return;
+  try {
+    const res = await fetch(`${url}/api/account-labels`);
+    const data = await res.json();
+    if(data.ok) {
+      accountLabels = data.labels || {};
+      localStorage.setItem('bankloa_accounts', JSON.stringify(accountLabels));
+      renderLog(); renderStats();
+    }
+  } catch(e) { /* dùng localStorage làm fallback */ }
 }
 function saveAccountLabels() {
   localStorage.setItem('bankloa_accounts', JSON.stringify(accountLabels));
@@ -1148,9 +1159,16 @@ function saveOneAccountLabel(stk) {
   if(!input) return;
   const label = input.value.trim();
   if(label) { accountLabels[stk] = label; } else { delete accountLabels[stk]; }
-  saveAccountLabels();
-  renderLog();
-  renderStats();
+  localStorage.setItem('bankloa_accounts', JSON.stringify(accountLabels));
+  const url = (document.getElementById('vercel-url')?.value || '').trim().replace(/\/$/,'');
+  if(url) {
+    fetch(`${url}/api/account-labels`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({stk, label})
+    }).catch(() => {});
+  }
+  renderLog(); renderStats(); renderAccountEditor();
   toast(`✓ Đã lưu tên tài khoản ${stk}`);
 }
 
