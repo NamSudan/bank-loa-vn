@@ -704,7 +704,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
     <div class="sec-title">📋 Lịch sử giao dịch</div>
     <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="log-cnt">0 giao dịch</span>
   </div>
-  <div id="stk-filter-bar" style="display:none;padding:8px 14px;display:none;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);"></div>
+  <div id="stk-filter-bar" style="display:none;padding:8px 14px;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);"></div>
   <div class="log-body" id="log-body">
     <div class="log-empty">Chưa có giao dịch nào — bấm "Bắt đầu lắng nghe" để bắt đầu</div>
   </div>
@@ -1136,22 +1136,60 @@ function renderAccountEditor() {
   el.innerHTML = seenSTKs.map(stk => {
     const label = accountLabels[stk] || '';
     const txCount = logs.filter(l=>l.stk===stk).length;
-    return `<div style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-2);">${stk}</span>
-        <span style="font-size:10px;color:var(--text-3);">${txCount} GD</span>
-      </div>
-      <div style="display:flex;gap:6px;">
-        <input type="text" id="acct-input-${stk}"
-          placeholder="Đặt tên (VD: Cửa hàng A)"
-          value="${label}"
-          style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;font-family:var(--font);color:var(--text);outline:none;"
-          onfocus="this.style.borderColor='var(--accent)'"
-          onblur="this.style.borderColor='var(--border)'">
-        <button class="btn btn-solid" style="font-size:11px;padding:7px 12px;" onclick="saveOneAccountLabel('${stk}')">Lưu</button>
-      </div>
-    </div>`;
+    if(label) {
+      return `<div id="stk-card-${stk}" style="margin-bottom:10px;background:var(--accent-lt);border:1.5px solid #c7d2fe;border-radius:var(--r-sm);padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</div>
+            <div style="font-size:10px;color:var(--text-3);font-family:var(--mono);margin-top:3px;">${stk} · ${txCount} GD</div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;flex-shrink:0;" onclick="editSTKLabel('${stk}')">✏ Sửa</button>
+        </div>
+      </div>`;
+    } else {
+      return `<div id="stk-card-${stk}" style="margin-bottom:10px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-2);">${stk}</span>
+          <span style="font-size:10px;color:var(--text-3);">${txCount} GD</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="acct-input-${stk}"
+            placeholder="Đặt tên (VD: Cửa hàng A)" value=""
+            style="flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;font-family:var(--font);color:var(--text);outline:none;"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border)'"
+            onkeydown="if(event.key==='Enter') saveOneAccountLabel('${stk}')">
+          <button class="btn btn-solid" style="font-size:11px;padding:7px 12px;" onclick="saveOneAccountLabel('${stk}')">Lưu</button>
+        </div>
+      </div>`;
+    }
   }).join('');
+}
+
+function editSTKLabel(stk) {
+  const card = document.getElementById('stk-card-' + stk);
+  if(!card) return;
+  const label = accountLabels[stk] || '';
+  const txCount = logs.filter(l=>l.stk===stk).length;
+  card.style.background = 'var(--surface-2)';
+  card.style.borderColor = 'var(--border)';
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-2);">${stk}</span>
+      <span style="font-size:10px;color:var(--text-3);">${txCount} GD</span>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="acct-input-${stk}"
+        placeholder="Đặt tên (VD: Cửa hàng A)" value="${label}"
+        style="flex:1;background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;font-family:var(--font);color:var(--text);outline:none;"
+        onfocus="this.style.borderColor='var(--accent)'"
+        onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter') saveOneAccountLabel('${stk}')">
+      <button class="btn btn-solid" style="font-size:11px;padding:7px 12px;" onclick="saveOneAccountLabel('${stk}')">Lưu</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:7px 10px;" onclick="renderAccountEditor()" title="Hủy">✕</button>
+    </div>`;
+  const input = document.getElementById('acct-input-' + stk);
+  if(input) { input.focus(); input.select(); }
 }
 
 function saveOneAccountLabel(stk) {
