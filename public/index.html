@@ -69,9 +69,10 @@ async function viewDayHistory(date) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
+      const stk  = extractSTK(m.text);
       if(amt !== 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
-        allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
-        logs.unshift({ amt, raw:m.text, bank, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+        allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, stk, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
+        logs.unshift({ amt, raw:m.text, bank, stk, time:m.time, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
       }
     });
     renderLog(); renderStats();
@@ -427,6 +428,18 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
   font-family: var(--mono);
 }
 .tx-name { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.tx-stk-badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--accent-lt); color: var(--accent);
+  border: 1px solid #c7d2fe;
+  font-family: var(--mono);
+  margin-bottom: 3px;
+  max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .tx-raw { font-size:11px; color:var(--text-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:340px; }
 .tx-time { font-family:var(--mono); font-size:10px; color:var(--text-3); margin-top:2px; }
 .tx-amt { font-family:var(--mono); font-size:15px; font-weight:700; text-align:right; }
@@ -579,6 +592,18 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
       <div class="test-sms-grid" id="test-grid"></div>
     </div>
   </div>
+
+  <!-- Quản lý tài khoản STK -->
+  <div class="sb-sect" id="sb-accounts-sect" style="display:none;">
+    <div class="sb-sect-title">🏷 Đặt tên tài khoản (STK)</div>
+    <div id="sb-accounts-list" style="margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text-3);font-style:italic;">Chưa phát hiện STK nào. Nhận giao dịch để bắt đầu.</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-3);">Đặt tên để loa đọc tên khi nhận tiền</div>
+    <div style="margin-top:8px;">
+      <button class="btn btn-ghost" style="font-size:11px;" onclick="renderAccountEditor()">🔄 Làm mới</button>
+    </div>
+  </div>
 </div>
 
 <div class="wrap">
@@ -641,6 +666,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
     </div>
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Theo ngân hàng</div>
     <div id="stats-banks"></div>
+    <div id="stats-stks-title" style="display:none;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 8px;">Theo tài khoản</div>
+    <div id="stats-stks"></div>
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 8px;">Biểu đồ theo giờ</div>
     <div id="stats-chart" style="display:flex;align-items:flex-end;gap:3px;height:60px;"></div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--muted);">
@@ -677,6 +704,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; h
     <div class="sec-title">📋 Lịch sử giao dịch</div>
     <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="log-cnt">0 giao dịch</span>
   </div>
+  <div id="stk-filter-bar" style="display:none;padding:8px 14px;display:none;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);"></div>
   <div class="log-body" id="log-body">
     <div class="log-empty">Chưa có giao dịch nào — bấm "Bắt đầu lắng nghe" để bắt đầu</div>
   </div>
@@ -740,6 +768,8 @@ const BURST_STEPS    = 15;
 let rate = 1;
 let logs = [];
 let filterBankKey = 'all';
+let filterSTK = 'all';
+let accountLabels = {};
 const LOG_PAGE_SIZE = 20;
 let logPage = 1;
 
@@ -748,6 +778,7 @@ function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sb-overlay').classList.add('show');
   document.body.style.overflow = 'hidden';
+  renderAccountEditor();
 }
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
@@ -811,17 +842,48 @@ function extractAmt(text, bank) {
   return before.includes('-') ? -n : n;
 }
 
+// ── EXTRACT STK ──
+function extractSTK(text) {
+  const m = text.match(/\bTK[:\s]*(\d{6,16})\b/i);
+  return m ? m[1] : null;
+}
+
+// ── ACCOUNT LABEL HELPERS ──
+function loadAccountLabels() {
+  try { accountLabels = JSON.parse(localStorage.getItem('bankloa_accounts') || '{}'); } catch(e) { accountLabels = {}; }
+}
+function saveAccountLabels() {
+  localStorage.setItem('bankloa_accounts', JSON.stringify(accountLabels));
+}
+function getAccountLabel(stk) {
+  if(!stk) return null;
+  return accountLabels[stk] || null;
+}
+function getAccountDisplay(stk) {
+  if(!stk) return null;
+  return accountLabels[stk] || stk;
+}
+
 // ── BUILD SPEECH ──
-function buildSpeech(text, amt, bank) {
+function buildSpeech(text, amt, bank, stk=null) {
   const fmt = n => {
     if(n >= 1000000) return (n/1000000).toLocaleString('vi-VN', {maximumFractionDigits:1}) + ' triệu';
     if(n >= 1000)    return (n/1000).toLocaleString('vi-VN', {maximumFractionDigits:0}) + ' nghìn';
     return n.toLocaleString('vi-VN');
   };
-  // Try extract sender name
+  const bankName = bank.name;
+  const label = stk ? getAccountLabel(stk) : null;
+
+  if(label) {
+    return `${bankName}! ${label} vừa nhận ${fmt(amt)} đồng. Xác nhận giao dịch thành công.`;
+  }
+  if(stk) {
+    const suffix = stk.slice(-4);
+    return `${bankName}! Tài khoản ${suffix} vừa nhận ${fmt(amt)} đồng.`;
+  }
+  // Fallback: try extract sender name
   const nameMatch = text.match(/(?:TU|tu|FROM)\s+([A-Z][A-Z\s]{2,20})(?:\s+(?:SO|TK|REF|LUC)|\.|$)/i);
   const name = nameMatch ? nameMatch[1].trim() : null;
-  const bankName = bank.name;
   if(name) return `${bankName}! ${name} vừa chuyển ${fmt(amt)} đồng. Xác nhận giao dịch thành công.`;
   return `${bankName} thông báo! Tài khoản vừa nhận ${fmt(amt)} đồng.`;
 }
@@ -832,21 +894,22 @@ function processMessage(text, time=Date.now()) {
   const amt = extractAmt(text, bank);
   if(!amt) return;
 
-  const speech = buildSpeech(text, amt, bank);
+  const stk = extractSTK(text);
+  const speech = buildSpeech(text, amt, bank, stk);
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
 
   // Update speaker UI
-  document.getElementById('ann-bank').textContent = bank.name;
+  document.getElementById('ann-bank').textContent = bank.name + (stk ? ` · ${getAccountDisplay(stk)}` : '');
   document.getElementById('ann-amount').textContent = (amt > 0 ? '+' : '') + fmt(Math.abs(amt));
   document.getElementById('ann-amount').style.color = amt > 0 ? (bank.color || 'var(--accent)') : '#e53e3e';
   document.getElementById('ann-text').textContent = speech;
   document.getElementById('ann-box').classList.add('show');
 
   // Add to log (không phát loa giao dịch trừ tiền)
-  addLog(amt, text, bank, amt > 0, time);
+  addLog(amt, text, bank, amt > 0, time, stk);
 
   // Lưu thống kê
-  saveStat(amt, bank, text);
+  saveStat(amt, bank, text, stk);
 
   // Speak
   if(document.getElementById('v-on').checked) speak(speech);
@@ -977,28 +1040,34 @@ function setSpeaking(on) {
 }
 
 // ── LOG ──
-function addLog(amt, raw, bank, shouldSpeak=true, time=Date.now()) {
-  const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
-  // Tránh thêm trùng
+function addLog(amt, raw, bank, shouldSpeak=true, time=Date.now(), stk=null) {
   const exists = logs.some(l=>l.raw===raw && l.amt===amt);
   if(exists) return;
-  logs.unshift({ amt, raw, bank, time, t: new Date(time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+  logs.unshift({ amt, raw, bank, time, stk, t: new Date(time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
   renderLog();
 }
 
 function renderLog(reset=true) {
   if(reset) logPage = 1;
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
-  const filtered = filterBankKey === 'all' ? logs : logs.filter(l=>l.bank.key===filterBankKey);
+  const filtered = logs.filter(l => {
+    const bankOk = filterBankKey === 'all' || l.bank.key === filterBankKey;
+    const stkOk  = filterSTK === 'all' || l.stk === filterSTK;
+    return bankOk && stkOk;
+  });
   const el = document.getElementById('log-body');
-  if(!filtered.length) { el.innerHTML='<div class="log-empty">Không có giao dịch nào</div>'; return; }
+  if(!filtered.length) { el.innerHTML='<div class="log-empty">Không có giao dịch nào</div>'; renderSTKFilterBar(); return; }
   const shown = filtered.slice(0, logPage * LOG_PAGE_SIZE);
   const remaining = filtered.length - shown.length;
-  el.innerHTML = shown.map(l=>`
+  el.innerHTML = shown.map(l=>{
+    const stkLabel = l.stk ? getAccountDisplay(l.stk) : null;
+    const stkBadge = stkLabel ? `<div class="tx-stk-badge">${stkLabel}</div>` : '';
+    return `
     <div class="tx-item">
       <div class="tx-bank-icon" style="color:${l.bank.color||'var(--ink)'};border-color:${l.bank.color||'var(--rule)'}20;">${l.bank.short}</div>
       <div>
         <div class="tx-name">${l.bank.name}</div>
+        ${stkBadge}
         <div class="tx-raw">${l.raw}</div>
       </div>
       <div>
@@ -1006,14 +1075,83 @@ function renderLog(reset=true) {
         <div class="tx-time">${l.t}</div>
       </div>
       <button class="tx-del-btn" onclick="confirmDeleteTx(${l.time},'${fmt(l.amt)}')" title="Xoá giao dịch này">×</button>
-    </div>`).join('') +
+    </div>`;
+  }).join('') +
     (remaining > 0 ? `<div style="text-align:center;padding:12px 8px;"><button class="btn btn-ghost" style="font-size:11px;width:100%;" onclick="loadMoreLog()">⬇ Xem thêm (còn ${remaining} giao dịch)</button></div>` : '');
   document.getElementById('log-cnt').textContent = logs.length + ' giao dịch';
+  renderSTKFilterBar();
 }
 
 function loadMoreLog() {
   logPage++;
   renderLog(false);
+}
+
+function renderSTKFilterBar() {
+  const bar = document.getElementById('stk-filter-bar');
+  if(!bar) return;
+  const bankFiltered = filterBankKey === 'all' ? logs : logs.filter(l=>l.bank.key===filterBankKey);
+  const stks = [...new Set(bankFiltered.map(l=>l.stk).filter(Boolean))];
+  if(stks.length < 2) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = [
+    `<div class="bank-tag${filterSTK==='all'?' active':''}" onclick="filterBySTK('all',this)">Tất cả TK</div>`,
+    ...stks.map(s => {
+      const label = accountLabels[s] || s;
+      return `<div class="bank-tag${filterSTK===s?' active':''}" onclick="filterBySTK('${s}',this)">${label}</div>`;
+    })
+  ].join('');
+}
+
+function filterBySTK(stk, el) {
+  filterSTK = stk;
+  renderLog();
+}
+
+function renderAccountEditor() {
+  const sect = document.getElementById('sb-accounts-sect');
+  const el = document.getElementById('sb-accounts-list');
+  if(!el) return;
+  const seenSTKs = [...new Set([
+    ...logs.map(l=>l.stk).filter(Boolean),
+    ...Object.keys(accountLabels)
+  ])];
+  if(!seenSTKs.length) {
+    if(sect) sect.style.display = 'none';
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-3);font-style:italic;">Chưa phát hiện STK nào.</div>';
+    return;
+  }
+  if(sect) sect.style.display = '';
+  el.innerHTML = seenSTKs.map(stk => {
+    const label = accountLabels[stk] || '';
+    const txCount = logs.filter(l=>l.stk===stk).length;
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-2);">${stk}</span>
+        <span style="font-size:10px;color:var(--text-3);">${txCount} GD</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="acct-input-${stk}"
+          placeholder="Đặt tên (VD: Cửa hàng A)"
+          value="${label}"
+          style="flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;font-family:var(--font);color:var(--text);outline:none;"
+          onfocus="this.style.borderColor='var(--accent)'"
+          onblur="this.style.borderColor='var(--border)'">
+        <button class="btn btn-solid" style="font-size:11px;padding:7px 12px;" onclick="saveOneAccountLabel('${stk}')">Lưu</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveOneAccountLabel(stk) {
+  const input = document.getElementById('acct-input-' + stk);
+  if(!input) return;
+  const label = input.value.trim();
+  if(label) { accountLabels[stk] = label; } else { delete accountLabels[stk]; }
+  saveAccountLabels();
+  renderLog();
+  renderStats();
+  toast(`✓ Đã lưu tên tài khoản ${stk}`);
 }
 
 // ── STATE ──
@@ -1088,14 +1226,15 @@ async function loadAllHistory(url) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
+      const stk  = extractSTK(m.text);
       if(amt !== 0 && !allTransactions.some(x => x.raw === m.text && x.amt === amt)) {
         allTransactions.push({
           amt, bank: bank.key, bankName: bank.name, color: bank.color,
-          raw: m.text, t: m.time, h: new Date(m.time).getHours(),
+          raw: m.text, stk, t: m.time, h: new Date(m.time).getHours(),
           date: new Date(m.time).toDateString()
         });
         logs.push({
-          amt, raw: m.text, bank, time: m.time,
+          amt, raw: m.text, bank, stk, time: m.time,
           t: new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
         });
       }
@@ -1207,6 +1346,7 @@ window.onload = () => {
     const v = localStorage.getItem('bankloa_'+k);
     if(v) el.value = v;
   });
+  loadAccountLabels();
   if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
   renderStats();
 
@@ -1247,11 +1387,11 @@ function testSMS(text) { processMessage(text); }
 // Lưu tất cả giao dịch hôm nay vào bộ nhớ
 let allTransactions = [];
 
-function saveStat(amt, bank, raw) {
+function saveStat(amt, bank, raw, stk=null) {
   const today = new Date().toDateString();
   allTransactions.push({
     amt, bank: bank.key, bankName: bank.name,
-    color: bank.color, raw,
+    color: bank.color, raw, stk,
     t: Date.now(),
     h: new Date().getHours(),
     date: today
@@ -1276,16 +1416,17 @@ async function loadTodayFromTelegram(token, chatId) {
       if(msg && fromId === chatId && msgDay === today) {
         const bank = detectBank(msg);
         const amt = extractAmt(msg, bank);
+        const stk = extractSTK(msg);
         if(amt !== 0) {
           allTransactions.push({
             amt, bank: bank.key, bankName: bank.name,
-            color: bank.color, raw: msg,
+            color: bank.color, raw: msg, stk,
             t: msgDate * 1000,
             h: new Date(msgDate * 1000).getHours(),
             date: today
           });
           // Thêm vào log UI (không phát loa)
-          addLog(amt, msg, bank, false, msgDate * 1000);
+          addLog(amt, msg, bank, false, msgDate * 1000, stk);
         }
       }
       // Cập nhật lastUpdateId
@@ -1346,6 +1487,44 @@ function renderStats() {
     }).join('');
   }
 
+  // Theo từng STK
+  const bySTK = {};
+  stats.forEach(s => {
+    if(!s.stk) return;
+    const display = accountLabels[s.stk] || s.stk;
+    if(!bySTK[s.stk]) bySTK[s.stk] = { display, total:0, count:0 };
+    bySTK[s.stk].total += s.amt;
+    bySTK[s.stk].count++;
+  });
+  const stkTitleEl = document.getElementById('stats-stks-title');
+  const stkEl = document.getElementById('stats-stks');
+  if(stkEl) {
+    const stkEntries = Object.entries(bySTK);
+    if(!stkEntries.length) {
+      if(stkTitleEl) stkTitleEl.style.display = 'none';
+      stkEl.innerHTML = '';
+    } else {
+      if(stkTitleEl) stkTitleEl.style.display = '';
+      const sortedSTK = stkEntries.sort((a,b)=>b[1].total-a[1].total);
+      const absTotal = Math.abs(total) || 1;
+      stkEl.innerHTML = sortedSTK.map(([stk, v])=>{
+        const pct = Math.round(Math.abs(v.total)/absTotal*100);
+        return `<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:5px;">
+            <span style="font-weight:600;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;">
+              ${v.display}
+              <span style="font-size:10px;color:var(--text-3);font-weight:400;">${v.count} GD</span>
+            </span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${v.total>=0?'var(--accent)':'#e53e3e'};">${v.total>=0?'':'-'}${fmtFull(Math.abs(v.total))}</span>
+          </div>
+          <div style="background:var(--border);border-radius:4px;height:4px;">
+            <div style="background:var(--accent);height:4px;border-radius:4px;width:${pct}%;opacity:0.65;transition:width .6s ease;"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
   // Biểu đồ theo giờ
   const byHour = Array(24).fill(0);
   stats.forEach(s => { byHour[s.h] += s.amt; });
@@ -1365,10 +1544,12 @@ function exportCSV() {
   if(!allTransactions.length) { toast('⚠ Chưa có dữ liệu!'); return; }
   const fmt = n => new Intl.NumberFormat('vi-VN').format(n);
   const rows = [
-    ['Thời gian','Ngân hàng','Số tiền','Nội dung SMS'],
+    ['Thời gian','Ngân hàng','STK','Tên TK','Số tiền','Nội dung SMS'],
     ...allTransactions.map(s=>[
       new Date(s.t).toLocaleString('vi-VN'),
       s.bankName,
+      s.stk || '',
+      s.stk ? (accountLabels[s.stk] || '') : '',
       fmt(s.amt),
       '"' + s.raw.replace(/"/g,'""') + '"'
     ])
@@ -1503,9 +1684,10 @@ async function viewDayHistory(date) {
     msgs.forEach(m => {
       const bank = detectBank(m.text);
       const amt  = extractAmt(m.text, bank);
+      const stk  = extractSTK(m.text);
       if(amt !== 0 && !allTransactions.some(x=>x.raw===m.text&&x.amt===amt)) {
-        allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
-        logs.unshift({ amt, raw:m.text, bank, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
+        allTransactions.push({ amt, bank:bank.key, bankName:bank.name, color:bank.color, raw:m.text, stk, t:m.time, h:new Date(m.time).getHours(), date:new Date(m.time).toDateString() });
+        logs.unshift({ amt, raw:m.text, bank, stk, time:m.time, t:new Date(m.time).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) });
       }
     });
     renderLog(); renderStats();
